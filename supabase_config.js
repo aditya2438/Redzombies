@@ -11,7 +11,7 @@
  * (If left as placeholders, the game automatically runs in offline/local mode!)
  */
 const SUPABASE_CONFIG = {
-  url: 'https://YOUR_PROJECT_ID.supabase.co',
+  url: 'https://gttpqhfardtahptehjjb.supabase.co',
   anonKey: 'sb_publishable_2Hm5Y1LGg1HizWVkN2adug_VU3L470P'
 };
 
