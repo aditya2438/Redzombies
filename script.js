@@ -1,14 +1,14 @@
 /**
- * RedZombies — 3x3 Grid Survival Game
- * Author: Final Year Project
+ * Laalpari — Jeet Ke Dikhao (Spider-Man Edition)
  * 
  * Main Game Engine:
- * - Single-clock requestAnimationFrame loop (avoids setTimeout race conditions)
- * - Procedural Web Audio API sound synthesizer (no external audio files needed)
- * - 2D Canvas particle rendering for blocks and win confetti
- * - Deterministic collision detection with barrier shields
- * - LocalStorage persistence with multi-profile and local leaderboard
- * - Responsive screen previewer for testing mobile/tablet/TV layouts
+ * - Red & Black Spider-Man theme with glowing crimson hazards and electric blue player dot
+ * - Strict 2.0-second round duration with live visible countdown bar and digital timer
+ * - 3x3 Grid: 7 blocks randomly turn into "Red Zone" (danger), 2 blocks turn into "Safe Black Zone"
+ * - Instant scan at t=0.00s: Safe Black Zone = +1 Level & +1 Score; Red Zone = -1 Lifeline
+ * - 3 Spider Lifelines (🕷️) with Spider-Sense Prediction Round event when dropping to 1 life
+ * - Game Over screen featuring: "you cannot crack the developer mind"
+ * - College ID Authentication with persistent localStorage and Supabase Real-Time Leaderboard
  */
 
 (function () {
@@ -16,7 +16,7 @@
 
   /* ==========================================================================
      1. PROCEDURAL SOUND SYNTHESIZER (Web Audio API)
-     Generates all sound effects programmatically so no external MP3s are needed.
+     No external audio dependencies; synthesizes custom arcade tones.
      ========================================================================== */
   class SoundManager {
     constructor() {
@@ -24,7 +24,6 @@
       this.muted = false;
     }
 
-    // AudioContext must be initiated or resumed after user interaction (browser policy)
     ensureContext() {
       if (!this.audioCtx) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -37,7 +36,6 @@
       }
     }
 
-    // Helper to play a single synth tone with an exponential decay volume envelope
     playTone(frequency, waveType, durationSec, volume = 0.15, endFrequency = null) {
       if (this.muted) return;
       this.ensureContext();
@@ -63,32 +61,28 @@
 
         osc.start(now);
         osc.stop(now + durationSec + 0.05);
-      } catch (err) {
-        console.error('Audio playback error:', err);
-      }
+      } catch (err) {}
     }
 
-    // Quick sine blip when player steps to an adjacent cell
+    // Quick sine blip when player moves
     playMoveSound() {
-      this.playTone(600, 'sine', 0.07, 0.12);
+      this.playTone(620, 'sine', 0.06, 0.12);
     }
 
-    // Ticking audio cue while warning pulses accelerate
-    playWarningTick() {
-      this.playTone(420, 'triangle', 0.05, 0.08, 320);
+    // Urgent tick as the 2-second timer counts down
+    playWarningTick(highPitch = false) {
+      this.playTone(highPitch ? 880 : 540, 'triangle', 0.04, 0.08, highPitch ? 660 : 380);
     }
 
-    // Rising sine sweep when barrier shields materialize
-    playBarrierSpawn() {
-      this.playTone(220, 'sine', 0.15, 0.15, 520);
+    // Crystalline chime when successfully surviving in a safe black zone
+    playSafeZoneChime() {
+      const notes = [587.33, 739.99, 880.00]; // D5, F#5, A5
+      notes.forEach((freq, i) => {
+        setTimeout(() => this.playTone(freq, 'sine', 0.12, 0.18), i * 65);
+      });
     }
 
-    // Low sub-bass thud when a strike beam passes safely
-    playStrikeSafe() {
-      this.playTone(110, 'sine', 0.18, 0.12, 50);
-    }
-
-    // Impact crunch when player takes damage (white noise + low bass thud)
+    // Impact crunch when struck by a Red Zone
     playHitSound() {
       if (this.muted) return;
       this.ensureContext();
@@ -96,63 +90,31 @@
 
       try {
         const now = this.audioCtx.currentTime;
-
-        // Sub bass component
         const osc = this.audioCtx.createOscillator();
         const gain = this.audioCtx.createGain();
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(140, now);
-        osc.frequency.exponentialRampToValueAtTime(30, now + 0.35);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.32);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
         osc.connect(gain);
         gain.connect(this.audioCtx.destination);
         osc.start(now);
-        osc.stop(now + 0.36);
-
-        // White noise burst
-        const bufferSize = this.audioCtx.sampleRate * 0.15;
-        const buffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = Math.random() * 2 - 1;
-        }
-        const noise = this.audioCtx.createBufferSource();
-        noise.buffer = buffer;
-        const noiseGain = this.audioCtx.createGain();
-        noiseGain.gain.setValueAtTime(0.2, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-        noise.connect(noiseGain);
-        noiseGain.connect(this.audioCtx.destination);
-        noise.start(now);
+        osc.stop(now + 0.33);
       } catch (err) {}
     }
 
-    // High crystalline double-chime when shield absorbs a laser
-    playBarrierBlock() {
-      this.playTone(784, 'sine', 0.12, 0.2, 1046);
-      setTimeout(() => this.playTone(1046, 'sine', 0.22, 0.22), 80);
-    }
-
-    // Descending minor interval when losing a lifeline
+    // Descending interval when losing a Spider lifeline
     playLifelineLost() {
-      this.playTone(659.25, 'sine', 0.14, 0.2); // E5
-      setTimeout(() => this.playTone(554.37, 'sine', 0.24, 0.2), 120); // C#5
+      this.playTone(620, 'sine', 0.12, 0.2);
+      setTimeout(() => this.playTone(460, 'sine', 0.22, 0.2), 110);
     }
 
-    // Ascending major arpeggio when successfully predicting in Oracle mode
+    // Ascending arpeggio when prediction round succeeds and restores a life
     playLifelineGained() {
-      const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
       notes.forEach((freq, i) => {
-        setTimeout(() => this.playTone(freq, 'sine', 0.15, 0.2), i * 80);
-      });
-    }
-
-    // 5-note sparkle celebration for surviving 5 consecutive waves
-    playStreakBonus() {
-      const notes = [587.33, 739.99, 880.00, 1174.66, 1479.98];
-      notes.forEach((freq, i) => {
-        setTimeout(() => this.playTone(freq, 'sine', 0.16, 0.18), i * 60);
+        setTimeout(() => this.playTone(freq, 'sine', 0.15, 0.22), i * 75);
       });
     }
 
@@ -160,11 +122,11 @@
     playGameOver() {
       const notes = [440, 392, 349.23, 293.66];
       notes.forEach((freq, i) => {
-        setTimeout(() => this.playTone(freq, 'triangle', 0.35, 0.2, freq * 0.9), i * 180);
+        setTimeout(() => this.playTone(freq, 'triangle', 0.35, 0.22, freq * 0.9), i * 180);
       });
     }
 
-    // Triumphant 4-note fanfare when beating personal best
+    // Fanfare when setting a new college personal best
     playHighScoreFanfare() {
       const notes = [523.25, 659.25, 783.99, 1046.50];
       notes.forEach((freq, i) => {
@@ -191,8 +153,7 @@
       this.canvas.height = rect.height;
     }
 
-    // Spark burst when laser strikes a shield
-    spawnShieldSparks(x, y, count = 14, color = '#22c55e') {
+    spawnSafeSparks(x, y, count = 16, color = '#38bdf8') {
       for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = Math.random() * 4 + 2;
@@ -209,10 +170,9 @@
       }
     }
 
-    // Confetti shower on new high score
     spawnHighScoreConfetti() {
-      const palette = ['#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#3b82f6'];
-      for (let i = 0; i < 60; i++) {
+      const palette = ['#ff0038', '#00d2ff', '#38bdf8', '#ffffff', '#eab308'];
+      for (let i = 0; i < 65; i++) {
         this.particles.push({
           x: Math.random() * this.canvas.width,
           y: -10,
@@ -226,7 +186,6 @@
       }
     }
 
-    // Update particle positions and draw to canvas each frame
     render() {
       if (this.particles.length === 0) return;
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -254,17 +213,15 @@
   }
 
   /* ==========================================================================
-     3. LOCAL STORAGE DATA PERSISTENCE
-     Safely handles save games with an in-memory fallback for private mode.
+     3. LOCAL STORAGE DATA PERSISTENCE (College ID Binding)
      ========================================================================== */
-  const SAVE_KEY = 'redzombies.save.v2';
+  const SAVE_KEY = 'laalpari.save.v3';
   let isFirstVisit = false;
 
   function generateUUID() {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
     }
-    // High-entropy UUID v4 fallback
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = (Math.random() * 16) | 0;
       const v = c === 'x' ? r : (r & 0x3) | 0x8;
@@ -273,18 +230,18 @@
   }
 
   let gameSaveData = {
-    schemaVersion: 2,
-    userId: generateUUID(),
-    lastActiveProfile: 'Survivor_01',
-    currentAvatar: '💀',
+    schemaVersion: 3,
+    deviceId: generateUUID(),
+    lastActiveCollegeId: 'STUDENT_01',
+    currentAvatar: '🕷️',
     muted: false,
     profiles: {
-      'Survivor_01': {
-        userId: null,
-        avatarIcon: '💀',
+      'STUDENT_01': {
+        collegeId: 'STUDENT_01',
+        avatarIcon: '🕷️',
         highScore: 0,
+        highestLevel: 1,
         gamesPlayed: 0,
-        totalWavesSurvived: 0,
         longestStreak: 0,
         createdAt: new Date().toISOString()
       }
@@ -298,16 +255,16 @@
         const parsed = JSON.parse(stored);
         if (parsed && parsed.profiles) {
           gameSaveData = parsed;
-          if (!gameSaveData.userId) {
-            gameSaveData.userId = generateUUID();
+          if (!gameSaveData.deviceId) {
+            gameSaveData.deviceId = generateUUID();
           }
         }
       } else {
         isFirstVisit = true;
-        gameSaveData.userId = generateUUID();
+        gameSaveData.deviceId = generateUUID();
       }
     } catch (err) {
-      console.warn('LocalStorage not accessible, running session storage only.');
+      console.warn('LocalStorage not accessible, using in-memory state.');
     }
   }
 
@@ -318,49 +275,56 @@
   }
 
   /* ==========================================================================
-     4. GAME ENGINE STATE MACHINE & CONSTANTS
+     4. GAME ENGINE CONSTANTS & STATE MACHINE
      ========================================================================== */
+  const ROUND_DURATION_MS = 2000; // Strict 2.0-second round duration
+  const PREDICTION_DURATION_MS = 10000; // 10-second bonus prediction window
+
   const GamePhase = {
     PROFILE_SELECT: 'PROFILE_SELECT',
-    SPAWN: 'SPAWN',
-    WARNING: 'WARNING',
-    STRIKE: 'STRIKE',
-    COOLDOWN: 'COOLDOWN',
-    FREEZE_GUESS: 'FREEZE_GUESS',
+    ACTIVE: 'ACTIVE',
+    SCANNING: 'SCANNING',
+    PREDICTION: 'PREDICTION',
     GAME_OVER: 'GAME_OVER'
   };
 
   const sound = new SoundManager();
   let particles = null;
 
-  // Primary reactive state object
+  // 9 Coordinates in the 3x3 Grid
+  const ALL_CELLS = [
+    { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 },
+    { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 },
+    { x: 0, y: 2 }, { x: 1, y: 2 }, { x: 2, y: 2 }
+  ];
+
   const gameState = {
     phase: GamePhase.PROFILE_SELECT,
-    phaseElapsed: 0,
     paused: false,
-    round: 1,
+    round: 1, // Level
     score: 0,
     personalBest: 0,
-    lifelines: 5,
+    lifelines: 3, // Starts with 3 Spider Lifelines (🕷️)
     streak: 0,
     maxStreakThisRun: 0,
-    guessEventUsed: false,
-    justReachedTwoLives: false,
-    wasHitThisWave: false,
-    
-    // Player coordinate: x is column (0=left, 1=center, 2=right), y is row (0=top, 1=center, 2=bottom)
+
+    // Timer tracking for current round
+    roundRemainingMs: ROUND_DURATION_MS,
+    lastTickHalfSec: 0,
+
+    // Grid allocation: 7 Red Danger Zones, 2 Safe Black Zones
+    safeZones: [],
+    dangerZones: [],
+    preRolledSafeZones: null,
+
+    // Spider-Sense prediction round flag (triggers when dropping to 1 life)
+    hasTriggeredPredictionThisDrop: false,
+    predictionRemainingMs: PREDICTION_DURATION_MS,
+    predictionAnswered: false,
+
+    // Player coordinate (Electric Blue Dot 🔵)
     player: { x: 1, y: 1 },
-    barriers: [], // Array of {x, y} coordinate objects
-    currentPattern: null, // { axis: 'row'|'col', index: 0..2, direction: 'North'|'South'|'East'|'West' }
-    preRolledPattern: null,
-    activeProfile: 'Survivor',
-
-    // Oracle Guess countdown timer
-    oracleRemainingMs: 10000,
-    oracleAnswered: false,
-
-    // Audio rhythm tracking
-    lastWarningTickTime: 0
+    activeCollegeId: 'STUDENT_01'
   };
 
   let lastFrameTimestamp = null;
@@ -378,40 +342,49 @@
     iconSoundOff: document.getElementById('icon-sound-off'),
     pauseBtn: document.getElementById('btn-pause'),
     helpBtn: document.getElementById('btn-help'),
+
+    // HUD Elements
     hudProfileBtn: document.getElementById('btn-profile-switch'),
     hudAvatar: document.getElementById('hud-avatar'),
     hudProfileName: document.getElementById('hud-profile-name'),
     hudRound: document.getElementById('hud-round'),
     hudScore: document.getElementById('hud-score'),
     hudBest: document.getElementById('hud-best'),
-    capsules: document.querySelectorAll('.capsule'),
+    spiderCapsules: document.querySelectorAll('.spider-capsule'),
     streakBadge: document.getElementById('streak-badge'),
     streakCount: document.getElementById('streak-count'),
+
+    // 2.0-Second Live Timer Elements
+    roundTimerDigits: document.getElementById('round-timer-digits'),
+    roundTimerBar: document.getElementById('round-timer-bar'),
+
+    // Arena 3x3 Grid
     grid3x3: document.getElementById('grid-3x3'),
     gridCells: document.querySelectorAll('.grid-cell'),
     playerToken: document.getElementById('player-token'),
     playerDisc: document.getElementById('player-disc'),
     playerAura: document.getElementById('player-aura'),
-    beamH: document.getElementById('beam-h'),
-    beamV: document.getElementById('beam-v'),
-    arrowN: document.getElementById('arrow-n'),
-    arrowS: document.getElementById('arrow-s'),
-    arrowW: document.getElementById('arrow-w'),
-    arrowE: document.getElementById('arrow-e'),
     hitVignette: document.getElementById('hit-vignette'),
     canvas: document.getElementById('fx-canvas'),
+
     // Modals
-    modalOracle: document.getElementById('modal-oracle'),
-    oracleBar: document.getElementById('oracle-timer-bar'),
+    modalPrediction: document.getElementById('modal-prediction'),
+    predictionTimerBar: document.getElementById('prediction-timer-bar'),
+    predictionFeedback: document.getElementById('prediction-feedback'),
+    predCells: document.querySelectorAll('.pred-cell'),
+
     modalGameOver: document.getElementById('modal-gameover'),
+    gameoverDevQuote: document.getElementById('gameover-dev-quote'),
     gameoverScore: document.getElementById('gameover-score'),
     gameoverBest: document.getElementById('gameover-best'),
     gameoverRounds: document.getElementById('gameover-rounds'),
     gameoverStreak: document.getElementById('gameover-streak'),
+    gameoverCollegeId: document.getElementById('gameover-college-id'),
     gameoverNewBest: document.getElementById('gameover-newbest'),
     btnRestart: document.getElementById('btn-restart'),
     btnSwitchUser: document.getElementById('btn-switch-user'),
     btnGameoverLeaderboard: document.getElementById('btn-gameover-leaderboard'),
+
     modalProfile: document.getElementById('modal-profile'),
     profileDropdown: document.getElementById('profile-select-dropdown'),
     profileUsernameInput: document.getElementById('profile-username-input'),
@@ -419,12 +392,14 @@
     profileInputFeedback: document.getElementById('profile-input-feedback'),
     btnProfileStart: document.getElementById('btn-profile-start'),
     btnProfileLeaderboard: document.getElementById('btn-profile-leaderboard'),
+
     modalHelp: document.getElementById('modal-help'),
     btnHelpClose: document.getElementById('btn-help-close'),
     modalPause: document.getElementById('modal-pause'),
     btnResume: document.getElementById('btn-resume'),
     btnPauseRestart: document.getElementById('btn-pause-restart'),
-    // Global Leaderboard Modal
+
+    // College Real-Time Leaderboard
     leaderboardToggleBtn: document.getElementById('btn-leaderboard-toggle'),
     modalLeaderboard: document.getElementById('modal-leaderboard'),
     globalLeaderboardBody: document.getElementById('global-leaderboard-body'),
@@ -436,68 +411,66 @@
   particles = new ParticleManager(dom.canvas);
 
   /* ==========================================================================
-     6. GAME DIFFICULTY & TIMING FORMULAS
+     6. GRID RANDOMIZATION: 7 RED ZONES & 2 SAFE BLACK ZONES
      ========================================================================== */
-  function calculatePhaseDuration(phase, roundNumber) {
-    switch (phase) {
-      case GamePhase.SPAWN:
-        return 300; // Snappy 0.30s shield spawn
-      case GamePhase.WARNING:
-        // Exactly 1.0 second (1000ms) starting warning time for intense, addictive reaction gameplay!
-        // Scales down with each round cleared to a razor-sharp 450ms floor
-        return Math.max(450, 1000 - (roundNumber - 1) * 55);
-      case GamePhase.STRIKE:
-        // Snappy laser discharge duration (280ms down to 200ms)
-        return Math.max(200, 280 - (roundNumber - 1) * 10);
-      case GamePhase.COOLDOWN:
-        return 250; // Quick 0.25s cooldown between waves
-      default:
-        return 600;
-    }
-  }
-
-  function calculateBarrierCount(roundNumber) {
-    if (roundNumber <= 5) return Math.floor(Math.random() * 2) + 2; // 2 or 3 shields
-    if (roundNumber <= 10) return Math.floor(Math.random() * 2) + 1; // 1 or 2 shields
-    return 1; // 1 shield in late rounds
-  }
-
-  // Rolls 1 of 12 equally probable attack vector patterns
-  function generateRandomAttackVector() {
-    const isRowStrike = Math.random() < 0.5;
-    const index = Math.floor(Math.random() * 3); // 0, 1, or 2
-    let direction;
-    if (isRowStrike) {
-      direction = Math.random() < 0.5 ? 'East' : 'West';
+  function randomizeGridZones() {
+    // If pre-rolled by Spider-Sense prediction round, honor it
+    if (gameState.preRolledSafeZones && gameState.preRolledSafeZones.length === 2) {
+      gameState.safeZones = gameState.preRolledSafeZones;
+      gameState.preRolledSafeZones = null;
     } else {
-      direction = Math.random() < 0.5 ? 'North' : 'South';
+      // Shuffle 9 cells
+      const shuffled = [...ALL_CELLS].sort(() => Math.random() - 0.5);
+      // Pick 2 as Safe Black Zones
+      gameState.safeZones = shuffled.slice(0, 2);
     }
-    return {
-      axis: isRowStrike ? 'row' : 'col',
-      index: index,
-      direction: direction
-    };
+
+    // The other 7 are Red Zones
+    gameState.dangerZones = ALL_CELLS.filter(cell => 
+      !gameState.safeZones.some(safe => safe.x === cell.x && safe.y === cell.y)
+    );
+
+    renderGridZones();
+  }
+
+  function renderGridZones() {
+    dom.gridCells.forEach(cell => {
+      const cellX = parseInt(cell.getAttribute('data-x'), 10);
+      const cellY = parseInt(cell.getAttribute('data-y'), 10);
+      const tag = cell.querySelector('.cell-status-tag');
+
+      cell.classList.remove('zone-red', 'zone-black', 'scan-safe-flash', 'scan-danger-flash');
+
+      const isSafe = gameState.safeZones.some(s => s.x === cellX && s.y === cellY);
+      if (isSafe) {
+        cell.classList.add('zone-black');
+        if (tag) tag.textContent = 'SAFE';
+      } else {
+        cell.classList.add('zone-red');
+        if (tag) tag.textContent = 'RED';
+      }
+    });
+  }
+
+  function clearGridHighlights() {
+    dom.gridCells.forEach(cell => {
+      cell.classList.remove('scan-safe-flash', 'scan-danger-flash');
+    });
   }
 
   /* ==========================================================================
      7. PLAYER INPUT & MOVEMENT HANDLING
      ========================================================================== */
   function isMovementPermitted() {
-    // Movement is permitted during SPAWN, WARNING, and COOLDOWN phases
-    // Strictly locked during STRIKE and while modals are active
     return (
-      (gameState.phase === GamePhase.SPAWN || gameState.phase === GamePhase.WARNING || gameState.phase === GamePhase.COOLDOWN) &&
-      !gameState.paused &&
-      gameState.phase !== GamePhase.FREEZE_GUESS &&
-      gameState.phase !== GamePhase.GAME_OVER &&
-      gameState.phase !== GamePhase.PROFILE_SELECT
+      gameState.phase === GamePhase.ACTIVE &&
+      !gameState.paused
     );
   }
 
   function movePlayer(deltaX, deltaY) {
     if (!isMovementPermitted()) return;
 
-    // Clamp coordinates to the 3x3 grid [0, 2]
     const nextX = Math.max(0, Math.min(2, gameState.player.x + deltaX));
     const nextY = Math.max(0, Math.min(2, gameState.player.y + deltaY));
 
@@ -524,18 +497,16 @@
   }
 
   function handleKeyboardInput(evt) {
-    // CRITICAL BUG FIX: If user is typing in a profile input field, allow all letters (A-Z, WASD, space, numbers, special chars)!
     const activeElementTag = evt.target ? evt.target.tagName : '';
     if (activeElementTag === 'INPUT' || activeElementTag === 'TEXTAREA' || activeElementTag === 'SELECT') {
-      return; // Do NOT preventDefault or intercept player movement while typing!
+      return; // Do NOT preventDefault while typing in input fields!
     }
 
     const key = evt.key;
-    // Prevent browser window from scrolling on arrow keys and spacebar during gameplay
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 's', 'S', 'a', 'A', 'd', 'D', ' '].includes(key)) {
       evt.preventDefault();
     }
-    if (evt.repeat) return; // Ignore key repeat to prevent move queueing
+    if (evt.repeat) return;
 
     switch (key) {
       case 'ArrowUp':
@@ -566,13 +537,13 @@
     }
   }
 
-  // Setup virtual D-Pad touch events using Pointer Events
   function attachTouchControls() {
     const bindDpadButton = (elementId, deltaX, deltaY) => {
       const btn = document.getElementById(elementId);
       if (!btn) return;
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        sound.ensureContext();
         btn.classList.add('pressed');
         movePlayer(deltaX, deltaY);
       });
@@ -595,17 +566,15 @@
     const targetCell = document.getElementById(`cell-${gameState.player.x}-${gameState.player.y}`);
     if (!targetCell) return;
 
-    // Use GPU translated coordinates matching the target grid cell
     const cellLeft = targetCell.offsetLeft;
     const cellTop = targetCell.offsetTop;
     dom.playerToken.style.transform = `translate3d(${cellLeft}px, ${cellTop}px, 0)`;
 
     if (isMoving) {
-      // Squash and stretch micro-interaction on step
-      dom.playerDisc.style.transform = 'scaleX(1.08) scaleY(0.92)';
+      dom.playerDisc.style.transform = 'scale(1.15)';
       setTimeout(() => {
         dom.playerDisc.style.transform = 'scale(1)';
-      }, 150);
+      }, 140);
     }
   }
 
@@ -613,13 +582,14 @@
     dom.hudRound.textContent = gameState.round;
     dom.hudScore.textContent = gameState.score;
     dom.hudBest.textContent = gameState.personalBest;
-    dom.hudProfileName.textContent = gameState.activeProfile;
-    const activeProf = gameSaveData.profiles[gameState.activeProfile];
-    const avatar = (activeProf && activeProf.avatarIcon) || gameSaveData.currentAvatar || '💀';
+    dom.hudProfileName.textContent = gameState.activeCollegeId;
+
+    const activeProf = gameSaveData.profiles[gameState.activeCollegeId];
+    const avatar = (activeProf && activeProf.avatarIcon) || gameSaveData.currentAvatar || '🕷️';
     dom.hudAvatar.textContent = avatar;
 
-    // Lifeline capsules visual state
-    dom.capsules.forEach((capsule, index) => {
+    // 3 Spider Lifelines Capsule Icons
+    dom.spiderCapsules.forEach((capsule, index) => {
       if (index < gameState.lifelines) {
         capsule.classList.remove('lost');
       } else {
@@ -635,78 +605,11 @@
       dom.streakBadge.classList.remove('active');
     }
 
-    // Emerald aura around player for 5+ streak
-    if (gameState.streak >= 5) {
+    // Emerald aura around player for 4+ streak
+    if (gameState.streak >= 4) {
       dom.playerAura.classList.add('active');
     } else {
       dom.playerAura.classList.remove('active');
-    }
-  }
-
-  function resetGridEffects() {
-    dom.gridCells.forEach(cell => {
-      cell.classList.remove('warning-wash');
-      cell.style.removeProperty('--pulse-speed');
-    });
-    document.querySelectorAll('.barrier-shield').forEach(node => node.remove());
-
-    dom.beamH.classList.remove('active', 'strike-sweep-west', 'strike-sweep-east');
-    dom.beamV.classList.remove('active', 'strike-sweep-north', 'strike-sweep-south');
-
-    dom.arrowN.classList.remove('active');
-    dom.arrowS.classList.remove('active');
-    dom.arrowW.classList.remove('active');
-    dom.arrowE.classList.remove('active');
-  }
-
-  function renderBarrierShields() {
-    document.querySelectorAll('.barrier-shield').forEach(node => node.remove());
-    gameState.barriers.forEach(barrier => {
-      const cell = document.getElementById(`cell-${barrier.x}-${barrier.y}`);
-      if (cell) {
-        const shieldEl = document.createElement('div');
-        shieldEl.className = 'barrier-shield';
-        shieldEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
-        cell.appendChild(shieldEl);
-      }
-    });
-  }
-
-  function renderWarningHighlight(pattern, progressFraction) {
-    // Pulse accelerates rapidly as 1-second warning counts down to strike
-    const pulsePeriod = Math.max(0.12, 0.38 - progressFraction * 0.24);
-
-    // Highlight row or column
-    for (let i = 0; i < 3; i++) {
-      const cellId = pattern.axis === 'row' ? `cell-${i}-${pattern.index}` : `cell-${pattern.index}-${i}`;
-      const cell = document.getElementById(cellId);
-      if (cell) {
-        cell.classList.add('warning-wash');
-        cell.style.setProperty('--pulse-speed', `${pulsePeriod.toFixed(2)}s`);
-      }
-    }
-
-    // Position warning arrow at outer boundary pointing inward
-    if (pattern.axis === 'col') {
-      const targetColCell = document.getElementById(`cell-${pattern.index}-0`);
-      const centerOffsetX = targetColCell.offsetLeft + targetColCell.offsetWidth / 2;
-      if (pattern.direction === 'North') {
-        dom.arrowN.style.left = `${centerOffsetX}px`;
-        dom.arrowN.classList.add('active');
-      } else {
-        dom.arrowS.style.left = `${centerOffsetX}px`;
-        dom.arrowS.classList.add('active');
-      }
-    } else {
-      const targetRowCell = document.getElementById(`cell-0-${pattern.index}`);
-      const centerOffsetY = targetRowCell.offsetTop + targetRowCell.offsetHeight / 2;
-      if (pattern.direction === 'West') {
-        dom.arrowW.style.top = `${centerOffsetY}px`;
-        dom.arrowW.classList.add('active');
-      } else {
-        dom.arrowE.style.top = `${centerOffsetY}px`;
-        dom.arrowE.classList.add('active');
-      }
     }
   }
 
@@ -717,319 +620,271 @@
     dom.playerDisc.classList.add('hit');
     dom.hitVignette.classList.add('active');
 
-    // Haptic vibration feedback on supported mobile devices
     if (navigator.vibrate) {
-      try { navigator.vibrate(120); } catch (e) {}
+      try { navigator.vibrate(140); } catch (e) {}
     }
 
     setTimeout(() => {
       dom.shell.classList.remove('shaking');
       dom.playerDisc.classList.remove('hit');
       dom.hitVignette.classList.remove('active');
-    }, 220);
-  }
-
-  function showShieldBlockFeedback(cellX, cellY) {
-    sound.playBarrierBlock();
-    const cell = document.getElementById(`cell-${cellX}-${cellY}`);
-    if (cell) {
-      const cellRect = cell.getBoundingClientRect();
-      const canvasRect = dom.canvas.getBoundingClientRect();
-      const posX = cellRect.left - canvasRect.left + cellRect.width / 2;
-      const posY = cellRect.top - canvasRect.top + cellRect.height / 2;
-      particles.spawnShieldSparks(posX, posY, 14, '#10b981');
-    }
+    }, 240);
   }
 
   /* ==========================================================================
-     9. PHASE STATE TRANSITIONS
+     9. ROUND CYCLING & 0.00s SCANNING LOGIC
      ========================================================================== */
   function startNewGame() {
     gameState.round = 1;
     gameState.score = 0;
-    gameState.lifelines = 5;
+    gameState.lifelines = 3; // Exactly 3 Spider Lifelines
     gameState.streak = 0;
     gameState.maxStreakThisRun = 0;
-    gameState.guessEventUsed = false;
-    gameState.justReachedTwoLives = false;
-    gameState.wasHitThisWave = false;
-    gameState.player = { x: 1, y: 1 };
-    gameState.barriers = [];
-    gameState.currentPattern = null;
-    gameState.preRolledPattern = null;
+    gameState.hasTriggeredPredictionThisDrop = false;
     gameState.paused = false;
+    gameState.player = { x: 1, y: 1 };
+    gameState.preRolledSafeZones = null;
 
     dismissAllModals();
-    resetGridEffects();
+    clearGridHighlights();
     updatePlayerVisuals();
     updateHUD();
 
-    switchPhaseTo(GamePhase.SPAWN);
+    startRound();
   }
 
-  function switchPhaseTo(newPhase) {
-    gameState.phase = newPhase;
-    gameState.phaseElapsed = 0;
-    gameState.lastWarningTickTime = 0;
+  function startRound() {
+    gameState.phase = GamePhase.ACTIVE;
+    gameState.roundRemainingMs = ROUND_DURATION_MS;
+    gameState.lastTickHalfSec = 4;
 
-    switch (newPhase) {
-      case GamePhase.SPAWN:
-        onEnterSpawnPhase();
-        break;
-      case GamePhase.WARNING:
-        onEnterWarningPhase();
-        break;
-      case GamePhase.STRIKE:
-        onEnterStrikePhase();
-        break;
-      case GamePhase.COOLDOWN:
-        onEnterCooldownPhase();
-        break;
-      case GamePhase.FREEZE_GUESS:
-        onEnterOracleGuessPhase();
-        break;
-      case GamePhase.GAME_OVER:
-        onEnterGameOverPhase();
-        break;
-    }
+    randomizeGridZones();
+    updateHUD();
+    updateTimerVisuals();
   }
 
-  function onEnterSpawnPhase() {
-    resetGridEffects();
-    gameState.wasHitThisWave = false;
-    gameState.justReachedTwoLives = false;
+  function updateTimerVisuals() {
+    const remainingSec = Math.max(0, gameState.roundRemainingMs / 1000);
+    dom.roundTimerDigits.textContent = `${remainingSec.toFixed(2)}s`;
 
-    // Pick 1 to 3 distinct barrier locations
-    const barrierCount = calculateBarrierCount(gameState.round);
-    const availableCells = [];
-    for (let col = 0; col < 3; col++) {
-      for (let row = 0; row < 3; row++) {
-        availableCells.push({ x: col, y: row });
-      }
-    }
-    // Shuffle available cells
-    availableCells.sort(() => Math.random() - 0.5);
-    gameState.barriers = availableCells.slice(0, barrierCount);
+    const progressFraction = Math.max(0, Math.min(1, gameState.roundRemainingMs / ROUND_DURATION_MS));
+    dom.roundTimerBar.style.width = `${(progressFraction * 100).toFixed(1)}%`;
 
-    sound.playBarrierSpawn();
-    renderBarrierShields();
-
-    // Occasional subtle grid shimmer animation
-    if (Math.random() < 0.3) {
-      const randomCell = dom.gridCells[Math.floor(Math.random() * dom.gridCells.length)];
-      randomCell.classList.add('shimmer');
-      setTimeout(() => randomCell.classList.remove('shimmer'), 1500);
-    }
-  }
-
-  function onEnterWarningPhase() {
-    // If Oracle Guess pre-rolled a pattern, we must honor it exactly
-    if (gameState.preRolledPattern) {
-      gameState.currentPattern = gameState.preRolledPattern;
-      gameState.preRolledPattern = null;
+    // Critical pulse when less than 0.60 seconds remain
+    if (gameState.roundRemainingMs <= 600) {
+      dom.roundTimerDigits.classList.add('critical');
+      dom.roundTimerBar.classList.add('critical');
     } else {
-      gameState.currentPattern = generateRandomAttackVector();
-    }
-    renderWarningHighlight(gameState.currentPattern, 0);
-  }
-
-  function onEnterStrikePhase() {
-    // Snapshot player position at the exact instant STRIKE begins (deterministic check)
-    const playerSnapshot = { x: gameState.player.x, y: gameState.player.y };
-    const pattern = gameState.currentPattern;
-
-    let isInDangerLine = false;
-    if (pattern.axis === 'row' && playerSnapshot.y === pattern.index) isInDangerLine = true;
-    if (pattern.axis === 'col' && playerSnapshot.x === pattern.index) isInDangerLine = true;
-
-    const hasShieldBarrier = gameState.barriers.some(b => b.x === playerSnapshot.x && b.y === playerSnapshot.y);
-
-    // Trigger directional strike beam animation
-    if (pattern.axis === 'row') {
-      const targetCell = document.getElementById(`cell-0-${pattern.index}`);
-      dom.beamH.style.top = `${targetCell.offsetTop}px`;
-      dom.beamH.classList.add('active');
-      if (pattern.direction === 'West') {
-        dom.beamH.classList.add('strike-sweep-west');
-      } else {
-        dom.beamH.classList.add('strike-sweep-east');
-      }
-    } else {
-      const targetCell = document.getElementById(`cell-${pattern.index}-0`);
-      dom.beamV.style.left = `${targetCell.offsetLeft}px`;
-      dom.beamV.classList.add('active');
-      if (pattern.direction === 'North') {
-        dom.beamV.classList.add('strike-sweep-north');
-      } else {
-        dom.beamV.classList.add('strike-sweep-south');
-      }
-    }
-
-    // Evaluate collision outcome
-    if (isInDangerLine) {
-      if (hasShieldBarrier) {
-        showShieldBlockFeedback(playerSnapshot.x, playerSnapshot.y);
-      } else {
-        // Player was struck by beam
-        gameState.wasHitThisWave = true;
-        gameState.lifelines--;
-        gameState.streak = 0; // Streak resets on hit
-
-        // Check if lifelines just transitioned to 2 (qualifies for Oracle Guess)
-        if (gameState.lifelines === 2 && !gameState.guessEventUsed) {
-          gameState.justReachedTwoLives = true;
-        }
-
-        showDamageFeedback();
-        updateHUD();
-      }
-    } else {
-      sound.playStrikeSafe();
+      dom.roundTimerDigits.classList.remove('critical');
+      dom.roundTimerBar.classList.remove('critical');
     }
   }
 
-  function onEnterCooldownPhase() {
-    resetGridEffects();
+  function scanGridAtZero() {
+    gameState.phase = GamePhase.SCANNING;
+    gameState.roundRemainingMs = 0;
+    updateTimerVisuals();
 
-    // Reward player only if they survived without damage
-    if (!gameState.wasHitThisWave) {
+    const playerX = gameState.player.x;
+    const playerY = gameState.player.y;
+    const playerCell = document.getElementById(`cell-${playerX}-${playerY}`);
+
+    const isSafe = gameState.safeZones.some(s => s.x === playerX && s.y === playerY);
+
+    if (isSafe) {
+      // ================= SAFE SANCTUARY =================
       gameState.score++;
+      gameState.round++;
       gameState.streak++;
       if (gameState.streak > gameState.maxStreakThisRun) {
         gameState.maxStreakThisRun = gameState.streak;
       }
-
-      // +3 bonus points every 5 consecutive waves
-      if (gameState.streak > 0 && gameState.streak % 5 === 0) {
-        gameState.score += 3;
-        sound.playStreakBonus();
-        dom.playerAura.classList.add('active');
-      }
-
-      // Update personal best on the fly
       if (gameState.score > gameState.personalBest) {
         gameState.personalBest = gameState.score;
       }
-    }
 
-    updateHUD();
-  }
+      sound.playSafeZoneChime();
 
-  function advanceGamePhase() {
-    if (gameState.phase === GamePhase.COOLDOWN) {
-      // 1. Check for Game Over
+      if (playerCell) {
+        playerCell.classList.add('scan-safe-flash');
+        const rect = playerCell.getBoundingClientRect();
+        const canvasRect = dom.canvas.getBoundingClientRect();
+        particles.spawnSafeSparks(
+          rect.left - canvasRect.left + rect.width / 2,
+          rect.top - canvasRect.top + rect.height / 2,
+          18,
+          '#38bdf8'
+        );
+      }
+
+      updateHUD();
+
+      // Brief 200ms victory flash before next round starts
+      setTimeout(() => {
+        if (gameState.phase === GamePhase.SCANNING) {
+          clearGridHighlights();
+          startRound();
+        }
+      }, 200);
+
+    } else {
+      // ================= CAUGHT IN RED ZONE =================
+      gameState.lifelines--;
+      gameState.streak = 0;
+
+      if (playerCell) {
+        playerCell.classList.add('scan-danger-flash');
+      }
+
+      showDamageFeedback();
+      updateHUD();
+
+      // Check if dropped to 0 lifelines -> Game Over
       if (gameState.lifelines <= 0) {
-        switchPhaseTo(GamePhase.GAME_OVER);
+        setTimeout(() => {
+          triggerGameOver();
+        }, 300);
         return;
       }
 
-      // 2. Check for Oracle Guess Event (First time health drops to 2)
-      if (gameState.justReachedTwoLives && !gameState.guessEventUsed) {
-        gameState.justReachedTwoLives = false;
-        switchPhaseTo(GamePhase.FREEZE_GUESS);
+      // Check if dropped from 2 to 1 lifeline -> Trigger Spider-Sense Prediction Round
+      if (gameState.lifelines === 1 && !gameState.hasTriggeredPredictionThisDrop) {
+        gameState.hasTriggeredPredictionThisDrop = true;
+        setTimeout(() => {
+          clearGridHighlights();
+          startPredictionRound();
+        }, 320);
         return;
       }
 
-      // 3. Otherwise proceed to the next round
-      gameState.round++;
-      switchPhaseTo(GamePhase.SPAWN);
-      return;
-    }
-
-    if (gameState.phase === GamePhase.SPAWN) {
-      switchPhaseTo(GamePhase.WARNING);
-      return;
-    }
-
-    if (gameState.phase === GamePhase.WARNING) {
-      switchPhaseTo(GamePhase.STRIKE);
-      return;
-    }
-
-    if (gameState.phase === GamePhase.STRIKE) {
-      switchPhaseTo(GamePhase.COOLDOWN);
-      return;
+      // Otherwise proceed to next round after short hit cooldown
+      setTimeout(() => {
+        if (gameState.phase === GamePhase.SCANNING) {
+          clearGridHighlights();
+          startRound();
+        }
+      }, 300);
     }
   }
 
   /* ==========================================================================
-     10. ORACLE GUESS EVENT
+     10. SPIDER-SENSE PREDICTION ROUND MINI-GAME (Triggered at 1 Lifeline)
      ========================================================================== */
-  function onEnterOracleGuessPhase() {
-    // Pre-roll the pattern BEFORE showing the modal so guess is verified against it
-    gameState.preRolledPattern = generateRandomAttackVector();
-    gameState.oracleRemainingMs = 10000; // 10s countdown
-    gameState.oracleAnswered = false;
-    gameState.paused = true; // Pause state machine clock
+  function startPredictionRound() {
+    gameState.phase = GamePhase.PREDICTION;
+    gameState.paused = true;
+    gameState.predictionRemainingMs = PREDICTION_DURATION_MS;
+    gameState.predictionAnswered = false;
 
-    dom.oracleBar.style.width = '100%';
-    dom.oracleBar.style.backgroundColor = 'var(--accent-emerald)';
-    dom.modalOracle.classList.add('open');
+    // Pre-roll the next round's 2 safe zones
+    const shuffled = [...ALL_CELLS].sort(() => Math.random() - 0.5);
+    gameState.preRolledSafeZones = shuffled.slice(0, 2);
+
+    // Reset prediction UI
+    dom.predictionTimerBar.style.width = '100%';
+    dom.predictionTimerBar.style.backgroundColor = 'var(--accent-emerald)';
+    dom.predictionFeedback.textContent = 'Tap 1 of the 9 blocks to scan with your Spider-Sense!';
+    dom.predictionFeedback.className = 'prediction-feedback';
+
+    dom.predCells.forEach(cell => {
+      cell.classList.remove('revealed-safe', 'revealed-red');
+      const inner = cell.querySelector('.pred-inner');
+      if (inner) inner.textContent = '?';
+      cell.disabled = false;
+    });
+
+    dom.modalPrediction.classList.add('open');
   }
 
-  function submitOracleVectorGuess(selectedDirection) {
-    if (gameState.oracleAnswered) return;
-    gameState.oracleAnswered = true;
-    gameState.guessEventUsed = true;
+  function handlePredictionChoice(cellX, cellY, clickedBtn) {
+    if (gameState.predictionAnswered) return;
+    gameState.predictionAnswered = true;
 
-    const isMatch = selectedDirection === gameState.preRolledPattern.direction;
+    // Disable all prediction buttons
+    dom.predCells.forEach(c => c.disabled = true);
+
+    const isMatch = gameState.preRolledSafeZones.some(s => s.x === cellX && s.y === cellY);
+    const inner = clickedBtn.querySelector('.pred-inner');
 
     if (isMatch) {
-      gameState.lifelines = 3; // Restore from 2 back to 3
+      // PREDICTION SUCCESS! RECOVER +1 LIFELINE (1 -> 2)
+      gameState.lifelines = 2;
+      clickedBtn.classList.add('revealed-safe');
+      if (inner) inner.textContent = '✓';
+      dom.predictionFeedback.textContent = '🎯 SPIDER-SENSE ACTIVATED! Recovered +1 Lifeline! (Lifelines: 2)';
+      dom.predictionFeedback.className = 'prediction-feedback success';
+
       sound.playLifelineGained();
-      const modalRect = dom.modalOracle.getBoundingClientRect();
-      particles.spawnShieldSparks(modalRect.width / 2, modalRect.height / 2, 22, '#10b981');
+      const rect = dom.modalPrediction.getBoundingClientRect();
+      particles.spawnSafeSparks(rect.width / 2, rect.height / 2, 28, '#10b981');
     } else {
+      // PREDICTION FAILED
+      clickedBtn.classList.add('revealed-red');
+      if (inner) inner.textContent = '✕';
+      dom.predictionFeedback.textContent = '✕ MISSED! Spider-Sense clouded. Continuing with 1 life!';
+      dom.predictionFeedback.className = 'prediction-feedback failure';
+
       sound.playWarningTick();
     }
 
     updateHUD();
 
+    // After 900ms reveal, close modal and resume game with the pre-rolled safe blocks!
     setTimeout(() => {
-      dom.modalOracle.classList.remove('open');
+      dom.modalPrediction.classList.remove('open');
       gameState.paused = false;
-      // Continue to next wave with pre-rolled pattern
-      gameState.round++;
-      switchPhaseTo(GamePhase.SPAWN);
-    }, 500);
+      startRound();
+    }, 950);
   }
 
   /* ==========================================================================
-     11. GAME OVER & LEADERBOARD PERSISTENCE
+     11. GAME OVER: "YOU CANNOT CRACK THE DEVELOPER MIND" & SUPABASE SYNC
      ========================================================================== */
-  function onEnterGameOverPhase() {
+  function triggerGameOver() {
+    gameState.phase = GamePhase.GAME_OVER;
     sound.playGameOver();
-    const currentProfile = gameSaveData.profiles[gameState.activeProfile];
-    const isNewRecord = gameState.score > currentProfile.highScore;
 
-    if (isNewRecord) {
-      currentProfile.highScore = gameState.score;
-      sound.playHighScoreFanfare();
-      setTimeout(() => particles.spawnHighScoreConfetti(), 300);
-      submitScore(gameState.score);
-    } else if (currentProfile.highScore > 0) {
-      submitScore(currentProfile.highScore);
+    const currentProfile = gameSaveData.profiles[gameState.activeCollegeId];
+    const isNewRecord = currentProfile && gameState.score > currentProfile.highScore;
+
+    if (currentProfile) {
+      if (isNewRecord) {
+        currentProfile.highScore = gameState.score;
+        sound.playHighScoreFanfare();
+        setTimeout(() => particles.spawnHighScoreConfetti(), 250);
+        submitScoreToSupabase(gameState.score);
+      } else if (currentProfile.highScore > 0) {
+        submitScoreToSupabase(currentProfile.highScore);
+      }
+
+      currentProfile.gamesPlayed++;
+      if (gameState.round > (currentProfile.highestLevel || 1)) {
+        currentProfile.highestLevel = gameState.round;
+      }
+      if (gameState.maxStreakThisRun > currentProfile.longestStreak) {
+        currentProfile.longestStreak = gameState.maxStreakThisRun;
+      }
+      commitSavedData();
     }
 
-    currentProfile.gamesPlayed++;
-    currentProfile.totalWavesSurvived += (gameState.round - 1);
-    if (gameState.maxStreakThisRun > currentProfile.longestStreak) {
-      currentProfile.longestStreak = gameState.maxStreakThisRun;
-    }
-    commitSavedData();
-
-    // Populate game over dialog
+    // Populate Game Over Modal
     dom.gameoverScore.textContent = gameState.score;
-    dom.gameoverBest.textContent = currentProfile.highScore;
-    dom.gameoverRounds.textContent = gameState.round - 1;
+    dom.gameoverBest.textContent = currentProfile ? currentProfile.highScore : gameState.score;
+    dom.gameoverRounds.textContent = gameState.round;
     dom.gameoverStreak.textContent = gameState.maxStreakThisRun;
+    dom.gameoverCollegeId.textContent = gameState.activeCollegeId;
     dom.gameoverNewBest.style.display = isNewRecord ? 'block' : 'none';
+
+    // Verify Developer Mind banner is displayed
+    if (dom.gameoverDevQuote) {
+      dom.gameoverDevQuote.textContent = '"you cannot crack the developer mind"';
+    }
 
     dom.modalGameOver.classList.add('open');
   }
 
   /* ==========================================================================
-     12. MAIN SINGLE-CLOCK RAF LOOP
+     12. MAIN SINGLE-CLOCK RAF LOOP (2.0s Round Clock)
      ========================================================================== */
   function mainGameLoop(currentTimestamp) {
     rafLoopId = requestAnimationFrame(mainGameLoop);
@@ -1038,63 +893,58 @@
     const deltaTime = currentTimestamp - lastFrameTimestamp;
     lastFrameTimestamp = currentTimestamp;
 
-    // Render particles
+    // Render 2D particles
     particles.render();
 
-    // Handle pause state
+    // Handle Paused state
     if (gameState.paused) {
-      // In Oracle mode, animate the drain bar
-      if (gameState.phase === GamePhase.FREEZE_GUESS && !gameState.oracleAnswered) {
-        gameState.oracleRemainingMs -= deltaTime;
-        const progressFraction = Math.max(0, gameState.oracleRemainingMs / 10000);
-        dom.oracleBar.style.width = `${(progressFraction * 100).toFixed(1)}%`;
+      // In Prediction Mode, drain the 10-second bar
+      if (gameState.phase === GamePhase.PREDICTION && !gameState.predictionAnswered) {
+        gameState.predictionRemainingMs -= deltaTime;
+        const progressFraction = Math.max(0, gameState.predictionRemainingMs / PREDICTION_DURATION_MS);
+        dom.predictionTimerBar.style.width = `${(progressFraction * 100).toFixed(1)}%`;
 
-        // Color shift in final seconds
-        if (gameState.oracleRemainingMs <= 3000) {
-          dom.oracleBar.style.backgroundColor = 'var(--hazard-crimson)';
-        } else if (gameState.oracleRemainingMs <= 6000) {
-          dom.oracleBar.style.backgroundColor = 'var(--hazard-orange)';
+        if (gameState.predictionRemainingMs <= 3000) {
+          dom.predictionTimerBar.style.backgroundColor = 'var(--spidey-crimson)';
         }
 
-        if (gameState.oracleRemainingMs <= 0) {
-          submitOracleVectorGuess('TIMEOUT');
+        if (gameState.predictionRemainingMs <= 0) {
+          // Timeout: auto-pick first cell
+          const firstCell = dom.predCells[0];
+          handlePredictionChoice(0, 0, firstCell);
         }
       }
       return;
     }
 
-    if (gameState.phase === GamePhase.PROFILE_SELECT || gameState.phase === GamePhase.GAME_OVER) {
+    if (gameState.phase !== GamePhase.ACTIVE) {
       return;
     }
 
-    gameState.phaseElapsed += deltaTime;
+    // Decrement round remaining time
+    gameState.roundRemainingMs -= deltaTime;
 
-    // Audio cue ticks during warning
-    if (gameState.phase === GamePhase.WARNING) {
-      const totalWarningDuration = calculatePhaseDuration(GamePhase.WARNING, gameState.round);
-      const fraction = Math.min(1, gameState.phaseElapsed / totalWarningDuration);
-      renderWarningHighlight(gameState.currentPattern, fraction);
-
-      // Warning ticks accelerate rapidly within the 1-second window (from ~240ms down to 90ms)
-      const tickCadence = Math.max(90, 240 - fraction * 140);
-      if (currentTimestamp - gameState.lastWarningTickTime >= tickCadence) {
-        sound.playWarningTick();
-        gameState.lastWarningTickTime = currentTimestamp;
-      }
+    // Sound ticks at 1.5s, 1.0s, 0.5s
+    const halfSecondsRemaining = Math.floor(gameState.roundRemainingMs / 500);
+    if (halfSecondsRemaining < gameState.lastTickHalfSec) {
+      gameState.lastTickHalfSec = halfSecondsRemaining;
+      sound.playWarningTick(halfSecondsRemaining <= 1);
     }
 
-    const currentDuration = calculatePhaseDuration(gameState.phase, gameState.round);
-    if (gameState.phaseElapsed >= currentDuration) {
-      advanceGamePhase();
+    // When 2-second timer reaches 0.00s -> trigger scan
+    if (gameState.roundRemainingMs <= 0) {
+      scanGridAtZero();
+    } else {
+      updateTimerVisuals();
     }
   }
 
   /* ==========================================================================
-     13. SUPABASE REAL-TIME LEADERBOARD & PROFILE ENGINE
+     13. SUPABASE REAL-TIME LEADERBOARD & COLLEGE ID SYSTEM
      ========================================================================== */
   let supabaseClient = null;
   let realtimeChannel = null;
-  let selectedAvatar = '💀';
+  let selectedAvatar = '🕷️';
 
   function escapeHtml(str) {
     if (!str) return '';
@@ -1106,10 +956,10 @@
       .replace(/'/g, '&#039;');
   }
 
-  function sanitizeUsername(raw) {
-    if (!raw) return 'Survivor';
-    // Character limit 3–15 characters, alphanumeric and underscore only, sanitized against XSS
-    return raw.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 15);
+  function sanitizeCollegeId(raw) {
+    if (!raw) return 'STUDENT';
+    // Allow alphanumeric, underscore, hyphen, length 2–15
+    return raw.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 15).toUpperCase();
   }
 
   function initSupabase() {
@@ -1126,7 +976,7 @@
         }
 
         subscribeToLeaderboard();
-        console.log('Supabase Realtime Client initialized successfully.');
+        console.log('Supabase Realtime connected for Laalpari College Leaderboard.');
       } else {
         if (dom.leaderboardStatusBadge) {
           dom.leaderboardStatusBadge.classList.add('offline');
@@ -1156,13 +1006,13 @@
           'postgres_changes',
           { event: '*', schema: 'public', table: 'leaderboard' },
           (payload) => {
-            console.log('Realtime score change received from Supabase:', payload.eventType);
-            fetchTop10();
+            console.log('Supabase realtime score change:', payload.eventType);
+            fetchTop10Leaderboard();
           }
         )
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            console.log('Connected to Supabase Realtime WebSocket channel!');
+            console.log('WebSocket active on Supabase leaderboard channel.');
           }
         });
     } catch (err) {
@@ -1170,10 +1020,9 @@
     }
   }
 
-  async function fetchTop10() {
+  async function fetchTop10Leaderboard() {
     if (!dom.globalLeaderboardBody) return;
 
-    // Display skeleton loading shimmers while awaiting response
     renderLeaderboardSkeletons();
 
     if (supabaseClient) {
@@ -1186,7 +1035,7 @@
 
         if (error) {
           console.warn('Error fetching Supabase leaderboard:', error.message);
-          renderFallbackLeaderboard('Unable to fetch live scores. Showing local records.');
+          renderFallbackLeaderboard('Showing local records.');
           return;
         }
 
@@ -1196,7 +1045,6 @@
         renderFallbackLeaderboard('Offline. Showing local records.');
       }
     } else {
-      // Local fallback mode
       renderFallbackLeaderboard();
     }
   }
@@ -1221,9 +1069,9 @@
         <tr>
           <td colspan="3">
             <div class="empty-leaderboard-box">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              <div>No global scores recorded yet!</div>
-              <small>Survive a round to claim Rank #1!</small>
+              <span>🕷️</span>
+              <div>No college records set yet!</div>
+              <small>Play a round to claim Rank #1!</small>
             </div>
           </td>
         </tr>
@@ -1231,7 +1079,7 @@
       return;
     }
 
-    const currentUserId = gameSaveData.userId;
+    const currentCollegeId = gameState.activeCollegeId;
     let rowsHtml = '';
 
     records.forEach((record, index) => {
@@ -1241,10 +1089,10 @@
       else if (rank === 2) badgeClass = 'rank-2';
       else if (rank === 3) badgeClass = 'rank-3';
 
-      const isCurrentUser = record.user_id === currentUserId || record.username === gameState.activeProfile;
+      const isCurrentUser = record.username === currentCollegeId;
       const rowClass = isCurrentUser ? 'leaderboard-row current-user-row' : 'leaderboard-row';
       const userTag = isCurrentUser ? '<span class="current-user-tag">YOU</span>' : '';
-      const avatar = record.avatar_icon || '💀';
+      const avatar = record.avatar_icon || '🕷️';
       const safeName = escapeHtml(record.username);
 
       rowsHtml += `
@@ -1270,9 +1118,9 @@
   function renderFallbackLeaderboard(notice = null) {
     const sortedProfiles = Object.entries(gameSaveData.profiles)
       .map(([name, stats]) => ({
-        user_id: stats.userId || gameSaveData.userId,
+        user_id: stats.collegeId || name,
         username: name,
-        avatar_icon: stats.avatarIcon || gameSaveData.currentAvatar || '💀',
+        avatar_icon: stats.avatarIcon || gameSaveData.currentAvatar || '🕷️',
         high_score: stats.highScore || 0
       }))
       .sort((a, b) => b.high_score - a.high_score)
@@ -1285,28 +1133,28 @@
     }
   }
 
-  // Debounced cloud score submission
   let lastScoreSubmitTime = 0;
-  async function submitScore(score) {
+  async function submitScoreToSupabase(score) {
     if (!supabaseClient) return;
     const now = Date.now();
-    if (now - lastScoreSubmitTime < 1000) return; // Prevent spamming
+    if (now - lastScoreSubmitTime < 1000) return;
     lastScoreSubmitTime = now;
 
-    const currentProfile = gameSaveData.profiles[gameState.activeProfile];
+    const currentProfile = gameSaveData.profiles[gameState.activeCollegeId];
     if (!currentProfile) return;
 
     try {
-      const sanitizedName = sanitizeUsername(gameState.activeProfile);
-      const avatar = currentProfile.avatarIcon || gameSaveData.currentAvatar || '💀';
-      const userId = gameSaveData.userId;
+      const sanitizedId = sanitizeCollegeId(gameState.activeCollegeId);
+      const avatar = currentProfile.avatarIcon || gameSaveData.currentAvatar || '🕷️';
+      // Deterministic user_id per College ID so each student has their own unique rank
+      const userId = 'cid_' + sanitizedId.toLowerCase();
 
       const { error } = await supabaseClient
         .from('leaderboard')
         .upsert(
           {
             user_id: userId,
-            username: sanitizedName,
+            username: sanitizedId,
             avatar_icon: avatar,
             high_score: score,
             updated_at: new Date().toISOString()
@@ -1317,10 +1165,10 @@
       if (error) {
         console.warn('Supabase upsert warning:', error.message);
       } else {
-        console.log('Score synced to Supabase successfully:', score);
+        console.log('Score synced to Supabase for College ID:', sanitizedId, score);
       }
     } catch (err) {
-      console.warn('Network exception while syncing score to Supabase:', err);
+      console.warn('Network error while syncing score to Supabase:', err);
     }
   }
 
@@ -1330,13 +1178,13 @@
       btn.addEventListener('click', () => {
         avatarButtons.forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
-        selectedAvatar = btn.getAttribute('data-avatar') || '💀';
+        selectedAvatar = btn.getAttribute('data-avatar') || '🕷️';
       });
     });
   }
 
   function setAvatarPickerSelection(avatar) {
-    selectedAvatar = avatar || '💀';
+    selectedAvatar = avatar || '🕷️';
     const avatarButtons = document.querySelectorAll('.avatar-option');
     avatarButtons.forEach(b => {
       if (b.getAttribute('data-avatar') === selectedAvatar) {
@@ -1350,29 +1198,31 @@
   function populateProfileDropdown() {
     if (!dom.profileDropdown) return;
     dom.profileDropdown.innerHTML = '';
-    Object.keys(gameSaveData.profiles).forEach(profileName => {
+    Object.keys(gameSaveData.profiles).forEach(collegeId => {
       const option = document.createElement('option');
-      option.value = profileName;
-      const avatar = gameSaveData.profiles[profileName].avatarIcon || '💀';
-      option.textContent = `${avatar} ${profileName} (Best: ${gameSaveData.profiles[profileName].highScore})`;
-      if (profileName === gameState.activeProfile) option.selected = true;
+      option.value = collegeId;
+      const avatar = gameSaveData.profiles[collegeId].avatarIcon || '🕷️';
+      option.textContent = `${avatar} ${collegeId} (Best: ${gameSaveData.profiles[collegeId].highScore})`;
+      if (collegeId === gameState.activeCollegeId) option.selected = true;
       dom.profileDropdown.appendChild(option);
     });
   }
 
-  function setActiveProfile(profileName) {
-    if (!gameSaveData.profiles[profileName]) return;
-    gameState.activeProfile = profileName;
-    gameSaveData.lastActiveProfile = profileName;
-    gameState.personalBest = gameSaveData.profiles[profileName].highScore;
-    const profAvatar = gameSaveData.profiles[profileName].avatarIcon || '💀';
+  function setActiveCollegeId(collegeId) {
+    const sanitized = sanitizeCollegeId(collegeId);
+    if (!gameSaveData.profiles[sanitized]) return;
+
+    gameState.activeCollegeId = sanitized;
+    gameSaveData.lastActiveCollegeId = sanitized;
+    gameState.personalBest = gameSaveData.profiles[sanitized].highScore || 0;
+    const profAvatar = gameSaveData.profiles[sanitized].avatarIcon || '🕷️';
     gameSaveData.currentAvatar = profAvatar;
     setAvatarPickerSelection(profAvatar);
 
     if (dom.profileUsernameInput) {
-      dom.profileUsernameInput.value = profileName;
+      dom.profileUsernameInput.value = sanitized;
       if (dom.profileCharCounter) {
-        dom.profileCharCounter.textContent = `${profileName.length}/15`;
+        dom.profileCharCounter.textContent = `${sanitized.length}/15`;
       }
     }
 
@@ -1380,17 +1230,17 @@
     updateHUD();
   }
 
-  function saveOrUpdateProfile(rawName, avatar) {
-    const sanitized = sanitizeUsername(rawName);
-    if (!sanitized || sanitized.length < 3) return false;
+  function saveOrUpdateCollegeId(rawId, avatar) {
+    const sanitized = sanitizeCollegeId(rawId);
+    if (!sanitized || sanitized.length < 2) return false;
 
     if (!gameSaveData.profiles[sanitized]) {
       gameSaveData.profiles[sanitized] = {
-        userId: gameSaveData.userId,
+        collegeId: sanitized,
         avatarIcon: avatar,
         highScore: 0,
+        highestLevel: 1,
         gamesPlayed: 0,
-        totalWavesSurvived: 0,
         longestStreak: 0,
         createdAt: new Date().toISOString()
       };
@@ -1399,12 +1249,11 @@
     }
 
     gameSaveData.currentAvatar = avatar;
-    setActiveProfile(sanitized);
+    setActiveCollegeId(sanitized);
     populateProfileDropdown();
 
-    // Register in Supabase if score already exists
     if (gameSaveData.profiles[sanitized].highScore > 0) {
-      submitScore(gameSaveData.profiles[sanitized].highScore);
+      submitScoreToSupabase(gameSaveData.profiles[sanitized].highScore);
     }
     return true;
   }
@@ -1413,12 +1262,12 @@
     gameState.paused = true;
     populateProfileDropdown();
     if (dom.profileUsernameInput) {
-      dom.profileUsernameInput.value = gameState.activeProfile;
+      dom.profileUsernameInput.value = gameState.activeCollegeId;
       if (dom.profileCharCounter) {
-        dom.profileCharCounter.textContent = `${gameState.activeProfile.length}/15`;
+        dom.profileCharCounter.textContent = `${gameState.activeCollegeId.length}/15`;
       }
     }
-    const currentAvatar = (gameSaveData.profiles[gameState.activeProfile] && gameSaveData.profiles[gameState.activeProfile].avatarIcon) || gameSaveData.currentAvatar || '💀';
+    const currentAvatar = (gameSaveData.profiles[gameState.activeCollegeId] && gameSaveData.profiles[gameState.activeCollegeId].avatarIcon) || gameSaveData.currentAvatar || '🕷️';
     setAvatarPickerSelection(currentAvatar);
     dismissAllModals();
     dom.modalProfile.classList.add('open');
@@ -1428,14 +1277,14 @@
     gameState.paused = true;
     dismissAllModals();
     dom.modalLeaderboard.classList.add('open');
-    fetchTop10();
+    fetchTop10Leaderboard();
   }
 
   /* ==========================================================================
-     14. DEVICE SIMULATOR & CONTROLS BINDING
-     ========================================================================== */
+     14. DEVICE SIMULATOR & MODAL CONTROLS
+     ========================================================================= */
   function dismissAllModals() {
-    dom.modalOracle.classList.remove('open');
+    dom.modalPrediction.classList.remove('open');
     dom.modalGameOver.classList.remove('open');
     dom.modalProfile.classList.remove('open');
     dom.modalHelp.classList.remove('open');
@@ -1444,7 +1293,7 @@
   }
 
   function togglePauseState() {
-    if (gameState.phase === GamePhase.PROFILE_SELECT || gameState.phase === GamePhase.GAME_OVER || gameState.phase === GamePhase.FREEZE_GUESS) return;
+    if (gameState.phase === GamePhase.PROFILE_SELECT || gameState.phase === GamePhase.GAME_OVER || gameState.phase === GamePhase.PREDICTION) return;
     gameState.paused = !gameState.paused;
     if (gameState.paused) {
       dom.modalPause.classList.add('open');
@@ -1453,7 +1302,6 @@
     }
   }
 
-  // Device simulation modes for instant testing of all screen sizes
   const simulationModes = ['mode-auto', 'mode-mobile-small', 'mode-mobile-large', 'mode-tablet', 'mode-laptop', 'mode-tv'];
   const simulationLabels = ['Auto', 'Mobile (Sm)', 'Mobile (Lg)', 'Tablet', 'Laptop', 'TV (4K)'];
   let currentDeviceIndex = 0;
@@ -1467,51 +1315,51 @@
     setTimeout(() => {
       particles.resizeCanvas();
       updatePlayerVisuals();
-    }, 320);
+    }, 300);
   }
 
   /* ==========================================================================
-     15. INITIALIZATION & SETUP
+     15. INITIALIZATION & EVENT LISTENERS
      ========================================================================== */
   function initializeGame() {
     loadSavedData();
 
-    // Restore last profile
-    if (gameSaveData.lastActiveProfile && gameSaveData.profiles[gameSaveData.lastActiveProfile]) {
-      gameState.activeProfile = gameSaveData.lastActiveProfile;
+    // Restore last active College ID
+    if (gameSaveData.lastActiveCollegeId && gameSaveData.profiles[gameSaveData.lastActiveCollegeId]) {
+      gameState.activeCollegeId = gameSaveData.lastActiveCollegeId;
     } else {
-      gameState.activeProfile = Object.keys(gameSaveData.profiles)[0] || 'Survivor_01';
+      gameState.activeCollegeId = Object.keys(gameSaveData.profiles)[0] || 'STUDENT_01';
     }
-    gameState.personalBest = gameSaveData.profiles[gameState.activeProfile]?.highScore || 0;
+    gameState.personalBest = gameSaveData.profiles[gameState.activeCollegeId]?.highScore || 0;
 
-    // Restore audio mute preference
+    // Restore audio mute state
     sound.muted = !!gameSaveData.muted;
     dom.iconSoundOn.style.display = sound.muted ? 'none' : 'block';
     dom.iconSoundOff.style.display = sound.muted ? 'block' : 'none';
 
     // Setup Avatar Picker
     setupAvatarPicker();
-    const currentAvatar = (gameSaveData.profiles[gameState.activeProfile] && gameSaveData.profiles[gameState.activeProfile].avatarIcon) || gameSaveData.currentAvatar || '💀';
+    const currentAvatar = (gameSaveData.profiles[gameState.activeCollegeId] && gameSaveData.profiles[gameState.activeCollegeId].avatarIcon) || gameSaveData.currentAvatar || '🕷️';
     setAvatarPickerSelection(currentAvatar);
 
-    // Attach keyboard listener
+    // Keyboard listeners
     window.addEventListener('keydown', handleKeyboardInput);
 
-    // Page Visibility API auto-pause when user changes tabs
+    // Page visibility auto-pause
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden && !gameState.paused && gameState.phase !== GamePhase.PROFILE_SELECT && gameState.phase !== GamePhase.GAME_OVER) {
+      if (document.hidden && !gameState.paused && gameState.phase === GamePhase.ACTIVE) {
         gameState.paused = true;
         dom.modalPause.classList.add('open');
       }
     });
 
-    // Handle window resize events
+    // Resize handler
     window.addEventListener('resize', () => {
       updatePlayerVisuals();
       particles.resizeCanvas();
     });
 
-    // Attach virtual touch buttons
+    // Touch D-Pad buttons
     attachTouchControls();
 
     // Sound toggle button
@@ -1524,7 +1372,7 @@
       dom.iconSoundOff.style.display = sound.muted ? 'block' : 'none';
     });
 
-    // Device Viewport preview switcher button
+    // Viewport preview toggle
     dom.deviceViewBtn.addEventListener('click', cycleDevicePreviewMode);
 
     // Pause / Resume buttons
@@ -1535,7 +1383,7 @@
       startNewGame();
     });
 
-    // Help dialog
+    // Help modal buttons
     dom.helpBtn.addEventListener('click', () => {
       gameState.paused = true;
       dom.modalHelp.classList.add('open');
@@ -1549,19 +1397,19 @@
     dom.hudProfileBtn.addEventListener('click', openProfileModal);
 
     dom.profileDropdown.addEventListener('change', (e) => {
-      setActiveProfile(e.target.value);
+      setActiveCollegeId(e.target.value);
     });
 
-    // Live validation & character counter on username input
+    // Input validation for College ID
     if (dom.profileUsernameInput) {
-      dom.profileUsernameInput.value = gameState.activeProfile;
+      dom.profileUsernameInput.value = gameState.activeCollegeId;
       if (dom.profileCharCounter) {
-        dom.profileCharCounter.textContent = `${gameState.activeProfile.length}/15`;
+        dom.profileCharCounter.textContent = `${gameState.activeCollegeId.length}/15`;
       }
 
       dom.profileUsernameInput.addEventListener('input', () => {
         const raw = dom.profileUsernameInput.value;
-        const sanitized = raw.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 15);
+        const sanitized = raw.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 15).toUpperCase();
         if (raw !== sanitized) {
           dom.profileUsernameInput.value = sanitized;
         }
@@ -1569,11 +1417,11 @@
           dom.profileCharCounter.textContent = `${sanitized.length}/15`;
         }
 
-        if (sanitized.length < 3) {
-          dom.profileInputFeedback.textContent = 'Minimum 3 alphanumeric characters required.';
+        if (sanitized.length < 2) {
+          dom.profileInputFeedback.textContent = 'Minimum 2 characters required.';
           dom.profileInputFeedback.className = 'input-feedback error';
         } else {
-          dom.profileInputFeedback.textContent = '3–15 characters (letters, numbers & _ only)';
+          dom.profileInputFeedback.textContent = 'Letters, numbers, dash & underscore only (2–15 chars)';
           dom.profileInputFeedback.className = 'input-feedback';
         }
       });
@@ -1588,19 +1436,19 @@
 
     function handleProfileSaveAndStart() {
       sound.ensureContext();
-      const enteredName = dom.profileUsernameInput ? dom.profileUsernameInput.value.trim() : '';
-      const sanitized = sanitizeUsername(enteredName);
+      const enteredId = dom.profileUsernameInput ? dom.profileUsernameInput.value.trim() : '';
+      const sanitized = sanitizeCollegeId(enteredId);
 
-      if (sanitized.length < 3) {
+      if (sanitized.length < 2) {
         if (dom.profileInputFeedback) {
-          dom.profileInputFeedback.textContent = 'Name must be 3–15 characters (alphanumeric & _ only)!';
+          dom.profileInputFeedback.textContent = 'Enter a valid College ID (2–15 chars)!';
           dom.profileInputFeedback.className = 'input-feedback error';
         }
         if (dom.profileUsernameInput) dom.profileUsernameInput.focus();
         return;
       }
 
-      saveOrUpdateProfile(sanitized, selectedAvatar);
+      saveOrUpdateCollegeId(sanitized, selectedAvatar);
       dismissAllModals();
       startNewGame();
     }
@@ -1614,7 +1462,7 @@
     if (dom.btnLeaderboardClose) {
       dom.btnLeaderboardClose.addEventListener('click', () => {
         dismissAllModals();
-        if (gameState.phase !== GamePhase.GAME_OVER && gameState.phase !== GamePhase.PROFILE_SELECT) {
+        if (gameState.phase === GamePhase.ACTIVE) {
           gameState.paused = false;
         }
       });
@@ -1626,7 +1474,7 @@
       dom.btnProfileLeaderboard.addEventListener('click', openLeaderboardModal);
     }
 
-    // Direct cell click/tap controls (allows tapping directly on arena to move)
+    // Direct cell click/tap controls (moves Electric Blue Dot directly to clicked cell)
     dom.gridCells.forEach(cell => {
       cell.addEventListener('pointerdown', () => {
         sound.ensureContext();
@@ -1638,7 +1486,7 @@
       });
     });
 
-    // Swipe controls on the 3x3 arena for fast mobile evasion
+    // Touch swipe controls on 3x3 arena
     let touchStartX = 0;
     let touchStartY = 0;
     dom.grid3x3.addEventListener('touchstart', (e) => {
@@ -1655,7 +1503,7 @@
       const absX = Math.abs(deltaX);
       const absY = Math.abs(deltaY);
 
-      if (Math.max(absX, absY) > 25) {
+      if (Math.max(absX, absY) > 20) {
         if (absX > absY) {
           movePlayer(deltaX > 0 ? 1 : -1, 0);
         } else {
@@ -1666,22 +1514,23 @@
       touchStartY = 0;
     }, { passive: true });
 
-    // Ensure audio context is ready on first touch anywhere
+    // Audio context initialization on first user tap
     document.addEventListener('pointerdown', () => sound.ensureContext(), { once: true });
 
-    // Restart & switch user buttons
+    // Restart & switch user buttons on Game Over
     dom.btnRestart.addEventListener('click', () => {
       sound.ensureContext();
       startNewGame();
     });
     dom.btnSwitchUser.addEventListener('click', openProfileModal);
 
-    // Oracle vector selection buttons
-    document.querySelectorAll('.vector-btn').forEach(btn => {
+    // Spider-Sense Prediction 3x3 Grid Buttons
+    dom.predCells.forEach(btn => {
       btn.addEventListener('click', () => {
         sound.ensureContext();
-        const vectorChoice = btn.getAttribute('data-vector');
-        submitOracleVectorGuess(vectorChoice);
+        const px = parseInt(btn.getAttribute('data-x'), 10);
+        const py = parseInt(btn.getAttribute('data-y'), 10);
+        handlePredictionChoice(px, py, btn);
       });
     });
 
@@ -1693,19 +1542,17 @@
     updateHUD();
     updatePlayerVisuals();
 
-    // Check if first visit: prompt profile modal on first launch
+    // Check if first visit: prompt College ID login modal on first launch
     if (isFirstVisit) {
       openProfileModal();
     } else {
-      // Prompt modal so user can jump in or edit
       dom.modalProfile.classList.add('open');
     }
 
-    // Kick off sole RAF game loop
+    // Launch main single-clock RAF loop
     rafLoopId = requestAnimationFrame(mainGameLoop);
   }
 
-  // Launch when document is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeGame);
   } else {

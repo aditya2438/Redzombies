@@ -1,4 +1,4 @@
-# 🧟 RedZombies — 3×3 Grid Survival Game
+# 🕷️ Laalpari — Jeet Ke Dikhao (Spider-Man Edition)
 
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
@@ -7,9 +7,9 @@
 ![Web Audio API](https://img.shields.io/badge/Web%20Audio%20API-Synthesizer-06b6d4?style=for-the-badge)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-A high-octane, glassmorphic 3×3 browser survival game built using **HTML5, CSS3, Vanilla JavaScript (ES6+), and Supabase Realtime PostgreSQL**. 
+A fast-paced, high-stakes 3×3 Spider-Man themed browser survival game built with **HTML5, CSS3, Vanilla JavaScript (ES6+), and Supabase Realtime PostgreSQL**.
 
-Zero heavy frameworks, with procedural retro sound synthesis powered by the native **Web Audio API** and instant **Global Real-Time Leaderboard sync** across players worldwide.
+Zero heavy frameworks, with retro sound synthesis powered by the native **Web Audio API** and instant **College Real-Time Leaderboard sync** across students.
 
 ---
 
@@ -20,42 +20,23 @@ Zero heavy frameworks, with procedural retro sound synthesis powered by the nati
 
 ---
 
-## 🎮 Game Overview & Lore
+## 🎮 Game Concept & Rules
 
-A hostile orbital defense grid sweeps across a compact 3×3 arena with lethal red laser beams. As the survivor, you must read the charging visual warnings, predict the attack vector, and either:
-1. **Evade the targeted line** before the beam fires (1.0s reflex window!), OR
-2. **Take cover behind temporary shield barricades** deployed within the strike zone.
+In **"Laalpari - Jeet Ke Dikhao"**, you control the electric **Blue Dot (🔵)** inside a high-voltage 3×3 Spider Arena:
 
-Survive consecutive waves to increase your score, unlock streak multiplier bonuses, and climb the **Global Real-Time Top 10 Leaderboard**!
-
----
-
-## ⚡ Key Features
-
-- 🏆 **Global Real-Time Top 10 Leaderboard (Supabase)**:
-  - Powered by Supabase PostgreSQL and Realtime WebSockets (`postgres_changes`).
-  - Instant live sync: whenever any player worldwide submits a high score, rankings update and animate live on every connected screen without page refresh.
-  - Metallic Rank Badges: Gold (#1), Silver (#2), Bronze (#3), and standard (#4–#10).
-  - Highlighted row for the active player with `(YOU)` tag.
-  - Skeleton shimmer animations while fetching data.
-  - Graceful offline fallback if cloud credentials are not yet configured.
-- 👤 **Gamer Profile & Avatar System**:
-  - Choose from 6 inline gamer avatar icons (`💀` Reaper, `⚡` Volt, `🛡️` Aegis, `☣️` Hazard, `🎯` Deadeye, `🚀` Titan).
-  - Alphanumeric callsign validation (3–15 characters, letters, numbers, underscores).
-  - Persistent browser `user_id` (UUID) stored in `localStorage`.
-  - Quick-edit profile button in the top HUD.
-- 🎨 **Custom Web App Icon (Favicon)**:
-  - Vector SVG icon (`favicon.svg`) designed specifically for browser URL bars, tabs, bookmarks, and mobile home screens.
-- 💎 **Apple-Glass Aesthetic**: Sleek dark UI with radial space gradients, hairline borders, frosted glass (`backdrop-filter: blur(20px)`), and fallback support.
-- 📱 **Multi-Device Responsive**: Dynamic fluid layout with CSS `clamp()`, `min()`, and `100dvh` viewport containment (zero page scrollbars). Looks pristine on:
-  - Small Mobile (iPhone SE / 340px)
-  - Flagship Smartphones (iPhone 16 Pro Max, Samsung Galaxy S24 Ultra / 412px)
-  - Tablets (iPad / 768px)
-  - Laptops & Desktops (1024px – 1920px)
-  - Curved Ultrawide & 4K Smart TVs
-- 🖥️ **Interactive Viewport Tester**: Header toggle allows instant previewing and testing of Mobile Small, Mobile Large, Tablet, Laptop, and TV views right on your computer.
-- 🔊 **Procedural Web Audio Synthesizer**: 11 unique real-time sound effects generated via native `AudioContext`, `OscillatorNode`, and `GainNode` envelopes (no external MP3 files needed).
-- 🔮 **Oracle Protocol (Lifeline Emergency)**: When reduced to 2 lifelines for the first time, an emergency protocol halts the grid clock and prompts you to predict the next strike vector (North, South, East, West). Guess correctly to restore a shield!
+1. **Strict 2.0-Second Round Duration**: Every round lasts exactly **2.00 seconds**. A visible digital countdown timer and progress bar drain from 100% to 0%.
+2. **7 Red Zones vs 2 Safe Black Zones**: At the start of each round, 7 blocks randomly turn into lethal **Red Zones (✕)** and only 2 blocks turn into **Safe Black Zones (🛡️)**.
+3. **0.00s Scanning**: When the 2-second timer hits zero, the arena instantly scans the player's position:
+   - **Safe Black Zone**: You survive, gain **+1 Level** and **+1 Point**, and the next round begins!
+   - **Red Zone**: Caught in danger! You lose **1 Lifeline**.
+4. **3 Spider Lifelines & Prediction Mini-Game**:
+   - You start with **3 Spider Lifelines (🕷️)**.
+   - **Spider-Sense Prediction Round**: When dropping from 2 to 1 lifeline, the game pauses for a bonus prediction round. Guess 1 of the 9 mystery blocks that will be safe in the upcoming round. If correct, you recover **+1 Lifeline** (back to 2)!
+   - **Game Over**: When 0 lifelines remain, the game immediately ends and displays the iconic quote:
+     > ***"you cannot crack the developer mind"***
+5. **College ID Authentication & Real-Time Leaderboard**:
+   - Unique **College ID** login saved locally in `localStorage`.
+   - Real-time ranking synchronized across players worldwide via **Supabase PostgreSQL & WebSockets**.
 
 ---
 
@@ -64,68 +45,26 @@ Survive consecutive waves to increase your score, unlock streak multiplier bonus
 | Control | Desktop / Laptop Keyboard | Mobile & Tablet Touch |
 | :--- | :--- | :--- |
 | **Move Up / Down / Left / Right** | `W`/`S`/`A`/`D` or Arrow Keys | Glass D-pad, **Direct Cell Tap**, or **Swipe** |
-| **Direct Cell Jump** | Click any grid cell | Tap any grid cell directly |
-| **Swipe Evasion** | Click and drag | Swipe Up / Down / Left / Right |
-| **Global Leaderboard** | Click 🏆 Trophy Icon in header | Tap 🏆 Trophy Icon in header |
+| **Direct Cell Jump** | Click any grid cell directly | Tap any grid cell directly |
+| **Swipe Evasion** | Click & drag on arena | Swipe Up / Down / Left / Right on grid |
+| **College Leaderboard** | Click 🏆 Trophy Icon in header | Tap 🏆 Trophy Icon in header |
 | **Pause / Resume** | `P` or `Escape` | Tap `⏸` header button |
 | **Mute / Unmute** | Click Sound Icon | Tap `🔊` header button |
 
 ---
 
-## ☁️ How to Set Up the Free Supabase Realtime Database
+## 🎨 Design & Aesthetic Elements
 
-You can host the PostgreSQL database and Realtime WebSockets for **100% free** using Supabase:
-
-1. **Create Free Account**:
-   - Go to [https://supabase.com](https://supabase.com) and click **"Start your project"** (Sign in with GitHub).
-   - Create a new project (e.g., Name: `RedZombies`, Region: pick the closest region to you, Free tier).
-2. **Run the Database Setup Script**:
-   - In your Supabase project dashboard, click **"SQL Editor"** from the left navigation menu.
-   - Click **"New query"**.
-   - Open [`supabase_setup.sql`](file:///d:/game/supabase_setup.sql) in this repository, copy all the SQL code, paste it into the editor, and click **"Run"**.
-   - This creates the `leaderboard` table, indexes, Row-Level Security (RLS) policies, and enables real-time WebSocket broadcasting.
-3. **Connect Your Game**:
-   - In Supabase, go to **Project Settings** (gear icon) -> **API**.
-   - Copy your **Project URL** (e.g. `https://xyzcompany.supabase.co`).
-   - Copy your **anon public** API Key.
-   - Open [`supabase_config.js`](file:///d:/game/supabase_config.js) in this project and paste them:
-     ```javascript
-     const SUPABASE_CONFIG = {
-       url: 'https://YOUR_PROJECT_ID.supabase.co',
-       anonKey: 'YOUR_SUPABASE_ANON_PUBLIC_KEY'
-     };
-     ```
-4. **Deploy**:
-   - Push your code to GitHub or Vercel, and your Global Real-Time Leaderboard will be live across the world!
+- **Red & Black Spider-Man Palette**: Obsidian black surfaces (`#020204`, `#07070b`), spider-web textures, glowing neon crimson accents (`#ff0038`, `#e11d48`), and an electric blue player dot (`#00d2ff`).
+- **Responsive Layout**: Designed with CSS `clamp()`, `min()`, and `100dvh` for seamless playability across phones, tablets, laptops, and 4K displays.
+- **Procedural Audio**: Custom retro synth blips, warning ticks, safe chimes, damage impacts, and fanfare synthesized directly via the Web Audio API without external audio files.
+- **Web App Favicon**: Vector SVG icon (`favicon.svg`) featuring the Spider-Man mask with web reticle and electric blue dot.
 
 ---
 
-## 📂 Project Structure
+## ☁️ Supabase Real-Time Leaderboard Integration
 
-```
-Redzombies/
-├── favicon.svg          # Crisp vector SVG web app icon for URL bar & tab
-├── index.html           # Semantic HTML5 markup, HUD layout, 3x3 arena, and modal dialogs
-├── style.css            # Glassmorphic CSS styling, leaderboard theme, responsive queries
-├── script.js            # Game engine, Web Audio synth, Supabase Realtime WebSocket client
-├── supabase_config.js   # Supabase cloud credentials and connection checker
-├── supabase_setup.sql   # PostgreSQL table, index, RLS, and realtime publication script
-├── vercel.json          # Clean URL configuration for Vercel deployment
-├── .gitignore           # Git ignore rules for OS and editor cache files
-└── README.md            # Comprehensive project documentation
-```
-
----
-
-## 👤 Author
-
-**Aditya Chouhan**
-- GitHub: [@aditya2438](https://github.com/aditya2438)
-- Email: aditya9993454129@gmail.com
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - feel free to play, fork, and learn!
-
+1. The game connects to Supabase via `supabase_config.js`.
+2. High scores and levels are submitted via `upsert` bound to the unique `College ID`.
+3. Supabase Realtime WebSockets automatically broadcast ranking updates to all connected devices without page refreshes.
+4. If offline, the game gracefully falls back to local storage records.

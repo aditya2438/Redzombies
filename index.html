@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>RedZombies — Survival Grid Game</title>
+  <title>Laalpari — Jeet Ke Dikhao (Spider-Man Edition)</title>
   
-  <!-- Web App Favicon / App Icon for URL Bar & Mobile Home Screen -->
+  <!-- Web App Favicon / App Icon -->
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="favicon.svg">
 
-  <!-- Google Fonts: Inter for clean UI, Space Grotesk for arcade style numbers -->
+  <!-- Google Fonts: Inter for UI, Space Grotesk for digital numbers -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:ital,wght@0,600;0,700;0,800;1,700;1,800&display=swap" rel="stylesheet">
 
   <!-- External Stylesheet -->
   <link rel="stylesheet" href="style.css">
@@ -33,15 +33,18 @@
       
       <!-- Top Navigation / Game Header -->
       <header class="top-toolbar">
-        <div class="brand-badge">
-          <span class="brand-dot"></span>
-          <span class="brand-name">RedZombies</span>
+        <div class="brand-badge spider-brand">
+          <span class="brand-spider">🕷️</span>
+          <div class="brand-title-wrap">
+            <span class="brand-name">Laalpari</span>
+            <span class="brand-tag">Jeet Ke Dikhao</span>
+          </div>
         </div>
         
         <div class="toolbar-actions">
-          <!-- Global Real-Time Leaderboard button -->
-          <button class="tool-btn" id="btn-leaderboard-toggle" title="Global Real-Time Leaderboard" aria-label="Global Leaderboard">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <!-- College Real-Time Leaderboard button -->
+          <button class="tool-btn" id="btn-leaderboard-toggle" title="College Real-Time Leaderboard" aria-label="College Leaderboard">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
               <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
               <path d="M4 22h16"></path>
@@ -52,24 +55,41 @@
 
           <!-- Viewport simulator button for testing mobile/tablet views -->
           <button class="tool-btn" id="btn-device-view" title="Toggle device preview" aria-label="Toggle Device View">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+              <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            </svg>
             <span id="device-view-label">Auto</span>
           </button>
           
           <!-- Sound on/off button -->
           <button class="tool-btn" id="btn-sound-toggle" title="Toggle sound" aria-label="Toggle Sound">
-            <svg id="icon-sound-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-            <svg id="icon-sound-off" style="display:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+            <svg id="icon-sound-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <svg id="icon-sound-off" style="display:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
           </button>
 
           <!-- Pause button -->
           <button class="tool-btn" id="btn-pause" title="Pause game" aria-label="Pause Game">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="4" width="4" height="16"></rect>
+              <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
           </button>
 
           <!-- Help / Instructions button -->
           <button class="tool-btn" id="btn-help" title="Rules and instructions" aria-label="How to Play">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
           </button>
         </div>
       </header>
@@ -77,16 +97,22 @@
       <!-- Glassmorphic Heads-Up Display (HUD) -->
       <section id="hud" class="glass-panel" aria-label="Game HUD">
         <div class="hud-row">
-          <!-- Profile Badge & Quick Edit Button -->
-          <button class="profile-pill" id="btn-profile-switch" aria-label="Edit Profile">
-            <span class="profile-avatar" id="hud-avatar">💀</span>
-            <span id="hud-profile-name">Survivor</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          <!-- College ID Profile Badge & Quick Edit Button -->
+          <button class="profile-pill" id="btn-profile-switch" aria-label="Switch College ID">
+            <span class="profile-avatar" id="hud-avatar">🕷️</span>
+            <div class="profile-pill-text">
+              <span class="profile-label">COLLEGE ID</span>
+              <span id="hud-profile-name" class="profile-value">STUDENT</span>
+            </div>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
           </button>
 
-          <!-- Current Wave / Round -->
+          <!-- Current Level -->
           <div class="hud-stat-box center">
-            <div class="hud-stat-label">ROUND</div>
+            <div class="hud-stat-label">LEVEL</div>
             <div class="hud-stat-value tabular" id="hud-round">1</div>
           </div>
 
@@ -98,65 +124,99 @@
           </div>
         </div>
 
-        <!-- Health / Lifeline Capsules and Streak Meter -->
+        <!-- 3 Spider Lifelines & Streak Tracker -->
         <div class="lifelines-row">
-          <div class="capsules-track" id="capsules-track" aria-label="Remaining Health">
-            <div class="capsule" data-idx="0"></div>
-            <div class="capsule" data-idx="1"></div>
-            <div class="capsule" data-idx="2"></div>
-            <div class="capsule" data-idx="3"></div>
-            <div class="capsule" data-idx="4"></div>
+          <div class="spider-lifelines-container" id="capsules-track" aria-label="Remaining Spider Lifelines">
+            <div class="spider-capsule" data-idx="0" title="Lifeline 1">
+              <span class="spider-icon">🕷️</span>
+            </div>
+            <div class="spider-capsule" data-idx="1" title="Lifeline 2">
+              <span class="spider-icon">🕷️</span>
+            </div>
+            <div class="spider-capsule" data-idx="2" title="Lifeline 3">
+              <span class="spider-icon">🕷️</span>
+            </div>
           </div>
           
           <div class="streak-badge" id="streak-badge">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
             <span id="streak-count">0 STREAK</span>
           </div>
         </div>
       </section>
 
+      <!-- Live 2.0-Second Countdown Timer & Progress Bar -->
+      <section id="round-timer-section" class="timer-section">
+        <div class="timer-meta">
+          <div class="timer-status">
+            <span class="radar-dot"></span>
+            <span class="timer-label">SCAN IN</span>
+          </div>
+          <div class="timer-digits tabular" id="round-timer-digits">2.00s</div>
+        </div>
+        <div class="timer-track">
+          <div class="timer-bar" id="round-timer-bar"></div>
+        </div>
+      </section>
+
       <!-- 3x3 Arena Grid Section -->
       <main id="arena-wrap">
-        <div id="grid-viewport" class="glass-panel">
+        <div id="grid-viewport" class="glass-panel spider-web-bg">
           
-          <!-- Directional Warning Edge Arrows indicating strike vector -->
-          <div id="arrow-n" class="edge-arrow edge-n">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-          </div>
-          <div id="arrow-s" class="edge-arrow edge-s">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
-          </div>
-          <div id="arrow-w" class="edge-arrow edge-w">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-          </div>
-          <div id="arrow-e" class="edge-arrow edge-e">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-          </div>
-
-          <!-- 3x3 Grid Matrix -->
+          <!-- 3x3 Grid Matrix (9 Blocks) -->
           <div id="grid-3x3">
-            <!-- Strike Beams (Rendered inside the grid coordinate space) -->
-            <div id="beam-h" class="strike-beam-h"></div>
-            <div id="beam-v" class="strike-beam-v"></div>
-
             <!-- Grid Cells (x = 0..2, y = 0..2) -->
-            <div class="grid-cell" id="cell-0-0" data-x="0" data-y="0"></div>
-            <div class="grid-cell" id="cell-1-0" data-x="1" data-y="0"></div>
-            <div class="grid-cell" id="cell-2-0" data-x="2" data-y="0"></div>
-            <div class="grid-cell" id="cell-0-1" data-x="0" data-y="1"></div>
-            <div class="grid-cell" id="cell-1-1" data-x="1" data-y="1"></div>
-            <div class="grid-cell" id="cell-2-1" data-x="2" data-y="1"></div>
-            <div class="grid-cell" id="cell-0-2" data-x="0" data-y="2"></div>
-            <div class="grid-cell" id="cell-1-2" data-x="1" data-y="2"></div>
-            <div class="grid-cell" id="cell-2-2" data-x="2" data-y="2"></div>
+            <div class="grid-cell" id="cell-0-0" data-x="0" data-y="0">
+              <span class="cell-status-tag"></span>
+            </div>
+            <div class="grid-cell" id="cell-1-0" data-x="1" data-y="0">
+              <span class="cell-status-tag"></span>
+            </div>
+            <div class="grid-cell" id="cell-2-0" data-x="2" data-y="0">
+              <span class="cell-status-tag"></span>
+            </div>
+            <div class="grid-cell" id="cell-0-1" data-x="0" data-y="1">
+              <span class="cell-status-tag"></span>
+            </div>
+            <div class="grid-cell" id="cell-1-1" data-x="1" data-y="1">
+              <span class="cell-status-tag"></span>
+            </div>
+            <div class="grid-cell" id="cell-2-1" data-x="2" data-y="1">
+              <span class="cell-status-tag"></span>
+            </div>
+            <div class="grid-cell" id="cell-0-2" data-x="0" data-y="2">
+              <span class="cell-status-tag"></span>
+            </div>
+            <div class="grid-cell" id="cell-1-2" data-x="1" data-y="2">
+              <span class="cell-status-tag"></span>
+            </div>
+            <div class="grid-cell" id="cell-2-2" data-x="2" data-y="2">
+              <span class="cell-status-tag"></span>
+            </div>
 
-            <!-- Player Token with smooth CSS spring transitions -->
+            <!-- Player Token: Electric Blue Dot (🔵) with glowing pulse -->
             <div id="player-token">
               <div class="player-aura" id="player-aura"></div>
-              <div class="player-disc" id="player-disc"></div>
+              <div class="player-disc" id="player-disc">
+                <span class="blue-core"></span>
+              </div>
             </div>
           </div>
 
+        </div>
+
+        <!-- Safe / Danger Legend Bar -->
+        <div class="arena-legend">
+          <div class="legend-item danger">
+            <span class="legend-dot red"></span>
+            <span>7 RED ZONES (LETHAL)</span>
+          </div>
+          <div class="legend-item safe">
+            <span class="legend-dot black"></span>
+            <span>2 SAFE BLACK ZONES</span>
+          </div>
         </div>
       </main>
 
@@ -164,74 +224,83 @@
       <footer id="mobile-controls" aria-label="Touch Navigation Controls">
         <div class="dpad-row">
           <button class="dpad-btn" id="dpad-up" aria-label="Move Up">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
           </button>
         </div>
         <div class="dpad-row">
           <button class="dpad-btn" id="dpad-left" aria-label="Move Left">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
           </button>
           <button class="dpad-btn" id="dpad-down" aria-label="Move Down">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
           </button>
           <button class="dpad-btn" id="dpad-right" aria-label="Move Right">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
           </button>
         </div>
       </footer>
 
     </div>
 
-    <!-- MODAL 1: Oracle Guess Event (Triggers when lifelines hit 2) -->
-    <div class="modal-backdrop" id="modal-oracle">
-      <div class="modal-card glass-panel">
-        <div class="brand-badge">
-          <span class="brand-dot"></span>
-          <span>ORACLE PROTOCOL</span>
+    <!-- MODAL 1: Spider-Sense Bonus Prediction Round (Triggered when health drops to 1) -->
+    <div class="modal-backdrop" id="modal-prediction">
+      <div class="modal-card glass-panel prediction-card">
+        <div class="brand-badge justify-center">
+          <span class="brand-spider">🕷️</span>
+          <span>SPIDER-SENSE RECOVERY</span>
         </div>
-        <h2 class="modal-title">Predict Strike Vector</h2>
+        <h2 class="modal-title">Predict Safe Black Zone</h2>
         <p class="modal-desc">
-          Critical system alert! Predict the next RedZombies orbital strike direction to reboot emergency shields.
+          Lifelines critical (1 Remaining)! Tap 1 of the 9 mystery blocks below. If your Spider-Sense correctly identifies one of the <strong>2 SAFE BLACK ZONES</strong> in the next round, you recover <strong>+1 Lifeline</strong>!
         </p>
 
-        <!-- 10-Second Countdown Bar -->
+        <!-- Prediction Countdown Bar -->
         <div class="countdown-bar-wrap">
-          <div class="countdown-bar" id="oracle-timer-bar"></div>
+          <div class="countdown-bar" id="prediction-timer-bar"></div>
         </div>
 
-        <!-- 4 Direction Prediction Options -->
-        <div class="vector-grid">
-          <button class="vector-btn" data-vector="North">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
-            <span>North</span>
-          </button>
-          <button class="vector-btn" data-vector="South">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            <span>South</span>
-          </button>
-          <button class="vector-btn" data-vector="West">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            <span>West</span>
-          </button>
-          <button class="vector-btn" data-vector="East">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-            <span>East</span>
-          </button>
+        <!-- 3x3 Prediction Mystery Blocks Grid -->
+        <div class="prediction-grid-3x3" id="prediction-grid">
+          <button class="pred-cell" data-x="0" data-y="0"><span class="pred-inner">?</span></button>
+          <button class="pred-cell" data-x="1" data-y="0"><span class="pred-inner">?</span></button>
+          <button class="pred-cell" data-x="2" data-y="0"><span class="pred-inner">?</span></button>
+          <button class="pred-cell" data-x="0" data-y="1"><span class="pred-inner">?</span></button>
+          <button class="pred-cell" data-x="1" data-y="1"><span class="pred-inner">?</span></button>
+          <button class="pred-cell" data-x="2" data-y="1"><span class="pred-inner">?</span></button>
+          <button class="pred-cell" data-x="0" data-y="2"><span class="pred-inner">?</span></button>
+          <button class="pred-cell" data-x="1" data-y="2"><span class="pred-inner">?</span></button>
+          <button class="pred-cell" data-x="2" data-y="2"><span class="pred-inner">?</span></button>
         </div>
+
+        <div class="prediction-feedback" id="prediction-feedback">Select a block to scan your Spider-Sense!</div>
       </div>
     </div>
 
     <!-- MODAL 2: Game Over Screen -->
     <div class="modal-backdrop" id="modal-gameover">
-      <div class="modal-card glass-panel text-center">
-        <div class="brand-badge justify-center">
-          <span class="brand-dot"></span>
-          <span>OUTPOST OVERRUN</span>
+      <div class="modal-card glass-panel text-center gameover-card">
+        <div class="brand-badge justify-center mb-1">
+          <span class="brand-spider">🕷️</span>
+          <span>LAALPARI ARENA</span>
         </div>
+
+        <!-- Developer Mind Quote Required by Prompt -->
+        <div class="developer-mind-banner" id="gameover-dev-quote">
+          "you cannot crack the developer mind"
+        </div>
+
         <h2 class="modal-title lg">Game Over</h2>
         
         <div id="gameover-newbest" class="new-best-banner">
-          ★ NEW HIGH SCORE ★
+          ★ NEW COLLEGE RECORD ★
         </div>
 
         <div class="score-display-box">
@@ -241,8 +310,12 @@
 
         <table class="stats-table">
           <tr>
-            <td>Waves Cleared</td>
-            <td id="gameover-rounds">0</td>
+            <td>College ID</td>
+            <td id="gameover-college-id" class="tabular font-bold">STUDENT</td>
+          </tr>
+          <tr>
+            <td>Level Reached</td>
+            <td id="gameover-rounds">1</td>
           </tr>
           <tr>
             <td>Personal Best</td>
@@ -256,70 +329,74 @@
 
         <div class="modal-action-buttons">
           <button class="btn-pill" id="btn-restart">Play Again</button>
-          <button class="btn-pill btn-secondary" id="btn-gameover-leaderboard">Global Top 10</button>
-          <button class="btn-pill btn-secondary" id="btn-switch-user">Profile</button>
+          <button class="btn-pill btn-secondary" id="btn-gameover-leaderboard">College Leaderboard</button>
+          <button class="btn-pill btn-secondary" id="btn-switch-user">Switch College ID</button>
         </div>
       </div>
     </div>
 
-    <!-- MODAL 3: Player Profile & Avatar Setup -->
+    <!-- MODAL 3: College ID Login & Avatar Setup -->
     <div class="modal-backdrop" id="modal-profile">
       <div class="modal-card glass-panel profile-card">
-        <h2 class="modal-title">Survivor Profile</h2>
-        <p class="modal-desc">Set your combat handle and gamer avatar for the global real-time leaderboard.</p>
+        <div class="brand-badge justify-center mb-1">
+          <span class="brand-spider">🕷️</span>
+          <span>LAALPARI — JEET KE DIKHAO</span>
+        </div>
+        <h2 class="modal-title">College ID Authentication</h2>
+        <p class="modal-desc">Enter your unique College ID to bind your high scores and climb the real-time leaderboard.</p>
         
-        <!-- Avatar Selector with 6 gamer icons -->
+        <!-- Avatar Selector with 6 Spider-Man themed icons -->
         <div class="avatar-section mt-2">
           <label class="hud-stat-label">CHOOSE AVATAR</label>
           <div class="avatar-grid mt-1" id="avatar-picker-grid">
-            <button type="button" class="avatar-option selected" data-avatar="💀" title="Reaper">
-              <span class="avatar-icon">💀</span>
-              <span class="avatar-label">Reaper</span>
+            <button type="button" class="avatar-option selected" data-avatar="🕷️" title="Classic Spider">
+              <span class="avatar-icon">🕷️</span>
+              <span class="avatar-label">Classic</span>
             </button>
-            <button type="button" class="avatar-option" data-avatar="⚡" title="Volt">
+            <button type="button" class="avatar-option" data-avatar="🕸️" title="Web Slinger">
+              <span class="avatar-icon">🕸️</span>
+              <span class="avatar-label">Web</span>
+            </button>
+            <button type="button" class="avatar-option" data-avatar="🖤" title="Symbiote">
+              <span class="avatar-icon">🖤</span>
+              <span class="avatar-label">Symbiote</span>
+            </button>
+            <button type="button" class="avatar-option" data-avatar="⚡" title="Electro Volt">
               <span class="avatar-icon">⚡</span>
-              <span class="avatar-label">Volt</span>
+              <span class="avatar-label">Electro</span>
             </button>
-            <button type="button" class="avatar-option" data-avatar="🛡️" title="Aegis">
-              <span class="avatar-icon">🛡️</span>
-              <span class="avatar-label">Aegis</span>
+            <button type="button" class="avatar-option" data-avatar="🔴" title="Crimson Hero">
+              <span class="avatar-icon">🔴</span>
+              <span class="avatar-label">Crimson</span>
             </button>
-            <button type="button" class="avatar-option" data-avatar="☣️" title="Hazard">
-              <span class="avatar-icon">☣️</span>
-              <span class="avatar-label">Hazard</span>
-            </button>
-            <button type="button" class="avatar-option" data-avatar="🎯" title="Deadeye">
-              <span class="avatar-icon">🎯</span>
-              <span class="avatar-label">Deadeye</span>
-            </button>
-            <button type="button" class="avatar-option" data-avatar="🚀" title="Titan">
-              <span class="avatar-icon">🚀</span>
-              <span class="avatar-label">Titan</span>
+            <button type="button" class="avatar-option" data-avatar="🔵" title="Electric Blue">
+              <span class="avatar-icon">🔵</span>
+              <span class="avatar-label">Blue Dot</span>
             </button>
           </div>
         </div>
 
-        <!-- Callsign Input (3-15 chars, alphanumeric) -->
+        <!-- College ID Input (2-15 chars, alphanumeric / hyphen / underscore) -->
         <div class="mt-2">
           <div class="label-with-counter">
-            <label class="hud-stat-label" for="profile-username-input">PLAYER HANDLE / NICKNAME</label>
+            <label class="hud-stat-label" for="profile-username-input">UNIQUE COLLEGE ID</label>
             <span class="char-counter" id="profile-char-counter">0/15</span>
           </div>
           <div class="create-profile-row mt-1">
-            <input type="text" id="profile-username-input" class="input-field" placeholder="e.g. Ghost_99" maxlength="15" autocomplete="off" spellcheck="false">
+            <input type="text" id="profile-username-input" class="input-field" placeholder="e.g. 21BCSE042 or ADITYA" maxlength="15" autocomplete="off" spellcheck="false">
           </div>
-          <div class="input-feedback" id="profile-input-feedback">3–15 characters (letters, numbers & _ only)</div>
+          <div class="input-feedback" id="profile-input-feedback">Letters, numbers, dash & underscore only (3–15 chars)</div>
         </div>
 
-        <!-- Quick Switch Profile Dropdown (For multi-profile support on this device) -->
+        <!-- Quick Switch Profile Dropdown (For multi-ID support on this device) -->
         <div class="mt-2" id="saved-profiles-section">
-          <label class="hud-stat-label" for="profile-select-dropdown">SAVED PROFILES ON THIS DEVICE</label>
+          <label class="hud-stat-label" for="profile-select-dropdown">SAVED IDS ON THIS DEVICE</label>
           <select id="profile-select-dropdown" class="input-field mt-1"></select>
         </div>
 
         <div class="modal-action-buttons mt-3">
           <button class="btn-pill" id="btn-profile-start">Save & Play</button>
-          <button class="btn-pill btn-secondary" id="btn-profile-leaderboard">Global Top 10</button>
+          <button class="btn-pill btn-secondary" id="btn-profile-leaderboard">College Leaderboard</button>
         </div>
       </div>
     </div>
@@ -327,14 +404,14 @@
     <!-- MODAL 4: How to Play / Guide -->
     <div class="modal-backdrop" id="modal-help">
       <div class="modal-card glass-panel">
-        <h2 class="modal-title">How to Play RedZombies</h2>
+        <h2 class="modal-title">How to Play: Laalpari</h2>
         <div class="modal-desc help-guide">
-          <p><strong>1. Move:</strong> Use Arrow Keys, WASD, tap grid cells, swipe, or use the glass D-pad to navigate across the 3×3 grid.</p>
-          <p><strong>2. Warning Sweeps:</strong> When a row or column pulses red, a lethal strike beam is charging. The arrow outside shows where it attacks from.</p>
-          <p><strong>3. Take Cover:</strong> Stand behind grey shield barricades or step out of the danger line before the beam fires.</p>
-          <p><strong>4. Oracle Protocol:</strong> When reduced to 2 lifelines, predict the next strike direction (North/South/East/West) to restore a shield.</p>
-          <p><strong>5. Streaks:</strong> Every 5 waves survived without taking a hit earns +3 bonus points and an emerald aura.</p>
-          <p><strong>6. Global Leaderboard:</strong> Your high score syncs worldwide in real time via Supabase PostgreSQL!</p>
+          <p><strong>1. Goal:</strong> Control the electric Blue Dot (🔵) and survive round after round in the 3×3 Spider Arena!</p>
+          <p><strong>2. 2-Second Timer:</strong> Every round lasts exactly <strong>2.00 seconds</strong>. Watch the progress bar drain!</p>
+          <p><strong>3. 7 Red vs 2 Safe Black:</strong> In every round, 7 blocks turn into dangerous <strong>Red Zones</strong> and only 2 blocks are <strong>Safe Black Zones</strong>.</p>
+          <p><strong>4. Scanning:</strong> When the 2s timer reaches 0.00s, the arena scans your location. If you are in a Safe Black Zone, you earn +1 Level and +1 Point! If caught in a Red Zone, you lose 1 Lifeline.</p>
+          <p><strong>5. 3 Spider Lifelines:</strong> You start with 3 lifelines (🕷️). When dropping from 2 to 1 lifeline, the <strong>Spider-Sense Prediction Round</strong> activates! Guess 1 of the 9 blocks that will be safe next round to recover +1 Lifeline!</p>
+          <p><strong>6. College Leaderboard:</strong> Your high score binds to your unique College ID and syncs globally in real time via Supabase PostgreSQL.</p>
         </div>
         <button class="btn-pill" id="btn-help-close">Got It</button>
       </div>
@@ -344,7 +421,7 @@
     <div class="modal-backdrop" id="modal-pause">
       <div class="modal-card glass-panel text-center">
         <h2 class="modal-title">Game Paused</h2>
-        <p class="modal-desc">All zombie orbital sweeps are frozen. Ready to jump back in?</p>
+        <p class="modal-desc">The Spider-Sense countdown is frozen. Ready to resume?</p>
         <div class="modal-action-buttons mt-3">
           <button class="btn-pill" id="btn-resume">Resume Game</button>
           <button class="btn-pill btn-secondary" id="btn-pause-restart">Restart Run</button>
@@ -352,16 +429,16 @@
       </div>
     </div>
 
-    <!-- MODAL 6: Global Real-Time Leaderboard (Supabase WebSocket) -->
+    <!-- MODAL 6: College Real-Time Leaderboard (Supabase WebSocket) -->
     <div class="modal-backdrop" id="modal-leaderboard">
       <div class="modal-card glass-panel leaderboard-card">
         <div class="leaderboard-header">
           <div>
             <div class="brand-badge mb-1">
-              <span class="brand-dot"></span>
+              <span class="brand-spider">🕷️</span>
               <span>SUPABASE REALTIME</span>
             </div>
-            <h2 class="modal-title">Global Top 10</h2>
+            <h2 class="modal-title">College Leaderboard</h2>
           </div>
           <div class="live-status-pill" id="leaderboard-status-badge">
             <span class="live-dot"></span>
@@ -369,7 +446,7 @@
           </div>
         </div>
 
-        <p class="modal-desc">Instant real-time sync across players worldwide via WebSockets.</p>
+        <p class="modal-desc">Instant real-time scores across all College IDs via Supabase WebSockets.</p>
 
         <!-- Leaderboard Table Container -->
         <div class="leaderboard-table-wrap">
@@ -377,7 +454,7 @@
             <thead>
               <tr>
                 <th class="col-rank">Rank</th>
-                <th class="col-player">Survivor</th>
+                <th class="col-player">College ID</th>
                 <th class="col-score">High Score</th>
               </tr>
             </thead>
@@ -395,7 +472,7 @@
 
   </div>
 
-  <!-- Supabase JS v2 Client (Lightweight Official CDN) -->
+  <!-- Supabase JS v2 Client (Official CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Supabase Cloud Database Configuration -->
   <script src="supabase_config.js"></script>
