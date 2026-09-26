@@ -60,10 +60,9 @@ Survive consecutive waves to increase your score, unlock streak multiplier bonus
 
 | Control | Desktop / Laptop Keyboard | Mobile & Tablet Touch |
 | :--- | :--- | :--- |
-| **Move Up** | `W` or `ArrowUp` | Tap `⬆` button |
-| **Move Down** | `S` or `ArrowDown` | Tap `⬇` button |
-| **Move Left** | `A` or `ArrowLeft` | Tap `⬅` button |
-| **Move Right** | `D` or `ArrowRight` | Tap `➡` button |
+| **Move Up / Down / Left / Right** | `W`/`S`/`A`/`D` or Arrow Keys | Glass D-pad, **Direct Cell Tap**, or **Swipe** |
+| **Direct Cell Jump** | Click any grid cell | Tap any grid cell directly |
+| **Swipe Evasion** | Click and drag | Swipe Up / Down / Left / Right |
 | **Pause / Resume** | `P` or `Escape` | Tap `⏸` header button |
 | **Mute / Unmute** | Click Sound Icon | Tap `🔊` header button |
 
@@ -103,9 +102,9 @@ Redzombies/
 - **Deterministic Collision Snapshot**: At the exact start of the `STRIKE` phase, the player's position is snapshotted:
   $$\text{Hit} = (Player \in \text{DangerLine}) \land (\text{Cell has no barrier})$$
   Movement is gated at the input handler level during `STRIKE`, making the collision resolution unexploitable.
-- **Dynamic Difficulty Ramping**:
-  - Warning duration decreases as waves progress: $\max(1200\text{ms}, 3000\text{ms} - (\text{round} - 1) \times 120\text{ms})$.
-  - Strike duration sharpens: $\max(350\text{ms}, 600\text{ms} - (\text{round} - 1) \times 15\text{ms})$.
+- **Fast-Paced Twitch Difficulty Ramping**:
+  - Hazard warning time is capped at **1.0 second (1000ms)** in Wave 1 and scales down to an intense **450ms** floor: $\max(450\text{ms}, 1000\text{ms} - (\text{round} - 1) \times 55\text{ms})$.
+  - Strike laser discharge snaps between $280\text{ms}$ and $200\text{ms}$.
   - Shield barriers scale down from 2–3 in early rounds to 1 in later rounds.
 
 ---

@@ -408,17 +408,18 @@
   function calculatePhaseDuration(phase, roundNumber) {
     switch (phase) {
       case GamePhase.SPAWN:
-        return 500; // 0.5s spawn delay
+        return 300; // Snappy 0.30s shield spawn
       case GamePhase.WARNING:
-        // Speeds up from 3.0s down to 1.2s floor as rounds progress
-        return Math.max(1200, 3000 - (roundNumber - 1) * 120);
+        // Exactly 1.0 second (1000ms) starting warning time for intense, addictive reaction gameplay!
+        // Scales down with each round cleared to a razor-sharp 450ms floor
+        return Math.max(450, 1000 - (roundNumber - 1) * 55);
       case GamePhase.STRIKE:
-        // Speeds up from 0.6s down to 0.35s floor
-        return Math.max(350, 600 - (roundNumber - 1) * 15);
+        // Snappy laser discharge duration (280ms down to 200ms)
+        return Math.max(200, 280 - (roundNumber - 1) * 10);
       case GamePhase.COOLDOWN:
-        return 500; // 0.5s cooldown
+        return 250; // Quick 0.25s cooldown between waves
       default:
-        return 1000;
+        return 600;
     }
   }
 
@@ -475,9 +476,29 @@
     }
   }
 
+  function moveToCell(targetX, targetY) {
+    if (!isMovementPermitted()) return;
+
+    const nextX = Math.max(0, Math.min(2, targetX));
+    const nextY = Math.max(0, Math.min(2, targetY));
+
+    if (nextX !== gameState.player.x || nextY !== gameState.player.y) {
+      gameState.player.x = nextX;
+      gameState.player.y = nextY;
+      sound.playMoveSound();
+      updatePlayerVisuals(true);
+    }
+  }
+
   function handleKeyboardInput(evt) {
+    // CRITICAL BUG FIX: If user is typing in a profile input field, allow all letters (A-Z, WASD, space, numbers, special chars)!
+    const activeElementTag = evt.target ? evt.target.tagName : '';
+    if (activeElementTag === 'INPUT' || activeElementTag === 'TEXTAREA' || activeElementTag === 'SELECT') {
+      return; // Do NOT preventDefault or intercept player movement while typing!
+    }
+
     const key = evt.key;
-    // Prevent browser window from scrolling on arrow keys and spacebar
+    // Prevent browser window from scrolling on arrow keys and spacebar during gameplay
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 's', 'S', 'a', 'A', 'd', 'D', ' '].includes(key)) {
       evt.preventDefault();
     }
@@ -617,8 +638,8 @@
   }
 
   function renderWarningHighlight(pattern, progressFraction) {
-    // Pulse accelerates as warning approaches strike
-    const pulsePeriod = Math.max(0.35, 1.2 - progressFraction * 0.85);
+    // Pulse accelerates rapidly as 1-second warning counts down to strike
+    const pulsePeriod = Math.max(0.12, 0.38 - progressFraction * 0.24);
 
     // Highlight row or column
     for (let i = 0; i < 3; i++) {
@@ -1016,8 +1037,8 @@
       const fraction = Math.min(1, gameState.phaseElapsed / totalWarningDuration);
       renderWarningHighlight(gameState.currentPattern, fraction);
 
-      // Warning ticks accelerate as time runs out
-      const tickCadence = Math.max(250, 800 - fraction * 550);
+      // Warning ticks accelerate rapidly within the 1-second window (from ~240ms down to 90ms)
+      const tickCadence = Math.max(90, 240 - fraction * 140);
       if (currentTimestamp - gameState.lastWarningTickTime >= tickCadence) {
         sound.playWarningTick();
         gameState.lastWarningTickTime = currentTimestamp;
@@ -1066,7 +1087,9 @@
   }
 
   function createNewProfile(rawName) {
-    const cleanedName = rawName.trim().slice(0, 16);
+    if (!rawName) return;
+    // Allow any UTF-8 letters (a-z, A-Z), digits (0-9), spaces, and special symbols (e.g. #007, Player_1, @Nova)
+    const cleanedName = rawName.trim().replace(/\s+/g, ' ').slice(0, 20);
     if (!cleanedName) return;
 
     if (!gameSaveData.profiles[cleanedName]) {
@@ -1200,14 +1223,78 @@
     dom.profileDropdown.addEventListener('change', (e) => {
       setActiveProfile(e.target.value);
     });
-    dom.btnProfileCreate.addEventListener('click', () => {
-      createNewProfile(dom.profileNewName.value);
+
+    // Enter key creates and selects the profile instantly
+    dom.profileNewName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const pendingName = dom.profileNewName.value.trim();
+        if (pendingName) {
+          createNewProfile(pendingName);
+        }
+      }
     });
+
+    dom.btnProfileCreate.addEventListener('click', () => {
+      const pendingName = dom.profileNewName.value.trim();
+      if (pendingName) {
+        createNewProfile(pendingName);
+      }
+    });
+
     dom.btnProfileStart.addEventListener('click', () => {
       sound.ensureContext();
+      // If user typed a callsign without manually pressing Create, auto-create it now!
+      const pendingName = dom.profileNewName.value.trim();
+      if (pendingName) {
+        createNewProfile(pendingName);
+      }
       dismissAllModals();
       startNewGame();
     });
+
+    // Direct cell click/tap controls (allows tapping directly on arena to move)
+    dom.gridCells.forEach(cell => {
+      cell.addEventListener('pointerdown', () => {
+        sound.ensureContext();
+        const cellX = parseInt(cell.getAttribute('data-x'), 10);
+        const cellY = parseInt(cell.getAttribute('data-y'), 10);
+        if (!isNaN(cellX) && !isNaN(cellY)) {
+          moveToCell(cellX, cellY);
+        }
+      });
+    });
+
+    // Swipe controls on the 3x3 arena for fast mobile evasion
+    let touchStartX = 0;
+    let touchStartY = 0;
+    dom.grid3x3.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches.length > 0) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    dom.grid3x3.addEventListener('touchend', (e) => {
+      if (!touchStartX || !touchStartY || !e.changedTouches || e.changedTouches.length === 0) return;
+      const deltaX = e.changedTouches[0].clientX - touchStartX;
+      const deltaY = e.changedTouches[0].clientY - touchStartY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      if (Math.max(absX, absY) > 25) {
+        if (absX > absY) {
+          movePlayer(deltaX > 0 ? 1 : -1, 0);
+        } else {
+          movePlayer(0, deltaY > 0 ? 1 : -1);
+        }
+      }
+      touchStartX = 0;
+      touchStartY = 0;
+    }, { passive: true });
+
+    // Ensure audio context is ready on first touch anywhere
+    document.addEventListener('pointerdown', () => sound.ensureContext(), { once: true });
 
     // Restart buttons
     dom.btnRestart.addEventListener('click', () => {

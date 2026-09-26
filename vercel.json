@@ -1,11 +1,6 @@
 {
-  "version": 2,
-  "name": "redzombies",
   "cleanUrls": true,
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" }
   ]
 }
