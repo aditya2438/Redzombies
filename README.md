@@ -15,7 +15,7 @@ Zero heavy frameworks, with procedural retro sound synthesis powered by the nati
 
 ## 🌐 Live Demo & Deployment
 
-- **Vercel Production**: [https://temporary-turbo-cedar-lx7erkn.vercel.app](https://temporary-turbo-cedar-lx7erkn.vercel.app)
+- **Vercel Production (Live)**: [https://redzombies.vercel.app](https://redzombies.vercel.app)
 - **GitHub Repository**: [https://github.com/aditya2438/Redzombies](https://github.com/aditya2438/Redzombies)
 
 ---
