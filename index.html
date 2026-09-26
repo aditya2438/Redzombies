@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>RedZombies — Survival Grid Game</title>
   
+  <!-- Web App Favicon / App Icon for URL Bar & Mobile Home Screen -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="favicon.svg">
+
   <!-- Google Fonts: Inter for clean UI, Space Grotesk for arcade style numbers -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,6 +39,17 @@
         </div>
         
         <div class="toolbar-actions">
+          <!-- Global Real-Time Leaderboard button -->
+          <button class="tool-btn" id="btn-leaderboard-toggle" title="Global Real-Time Leaderboard" aria-label="Global Leaderboard">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+              <path d="M4 22h16"></path>
+              <path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"></path>
+              <path d="M6 4h12v7a6 6 0 0 1-12 0V4z"></path>
+            </svg>
+          </button>
+
           <!-- Viewport simulator button for testing mobile/tablet views -->
           <button class="tool-btn" id="btn-device-view" title="Toggle device preview" aria-label="Toggle Device View">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
@@ -62,11 +77,11 @@
       <!-- Glassmorphic Heads-Up Display (HUD) -->
       <section id="hud" class="glass-panel" aria-label="Game HUD">
         <div class="hud-row">
-          <!-- Profile Badge -->
-          <button class="profile-pill" id="btn-profile-switch" aria-label="Switch Profile">
-            <span class="profile-avatar" id="hud-avatar">S</span>
+          <!-- Profile Badge & Quick Edit Button -->
+          <button class="profile-pill" id="btn-profile-switch" aria-label="Edit Profile">
+            <span class="profile-avatar" id="hud-avatar">💀</span>
             <span id="hud-profile-name">Survivor</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
           </button>
 
           <!-- Current Wave / Round -->
@@ -241,38 +256,71 @@
 
         <div class="modal-action-buttons">
           <button class="btn-pill" id="btn-restart">Play Again</button>
-          <button class="btn-pill btn-secondary" id="btn-switch-user">Switch Profile</button>
+          <button class="btn-pill btn-secondary" id="btn-gameover-leaderboard">Global Top 10</button>
+          <button class="btn-pill btn-secondary" id="btn-switch-user">Profile</button>
         </div>
       </div>
     </div>
 
-    <!-- MODAL 3: Profile Select & Local Leaderboard -->
+    <!-- MODAL 3: Player Profile & Avatar Setup -->
     <div class="modal-backdrop" id="modal-profile">
-      <div class="modal-card glass-panel">
+      <div class="modal-card glass-panel profile-card">
         <h2 class="modal-title">Survivor Profile</h2>
-        <p class="modal-desc">Pick an existing profile or enter a new callsign to track your stats and high scores.</p>
+        <p class="modal-desc">Set your combat handle and gamer avatar for the global real-time leaderboard.</p>
         
-        <div>
-          <label class="hud-stat-label" for="profile-select-dropdown">ACTIVE PROFILE</label>
-          <select id="profile-select-dropdown" class="input-field mt-1"></select>
-        </div>
-
-        <div>
-          <label class="hud-stat-label" for="profile-new-name">OR CREATE NEW</label>
-          <div class="create-profile-row mt-1">
-            <input type="text" id="profile-new-name" class="input-field" placeholder="Enter name (e.g. Nova, #007, Player_1)" maxlength="20" autocomplete="off" spellcheck="false">
-            <button class="btn-pill btn-secondary btn-create" id="btn-profile-create">Create</button>
+        <!-- Avatar Selector with 6 gamer icons -->
+        <div class="avatar-section mt-2">
+          <label class="hud-stat-label">CHOOSE AVATAR</label>
+          <div class="avatar-grid mt-1" id="avatar-picker-grid">
+            <button type="button" class="avatar-option selected" data-avatar="💀" title="Reaper">
+              <span class="avatar-icon">💀</span>
+              <span class="avatar-label">Reaper</span>
+            </button>
+            <button type="button" class="avatar-option" data-avatar="⚡" title="Volt">
+              <span class="avatar-icon">⚡</span>
+              <span class="avatar-label">Volt</span>
+            </button>
+            <button type="button" class="avatar-option" data-avatar="🛡️" title="Aegis">
+              <span class="avatar-icon">🛡️</span>
+              <span class="avatar-label">Aegis</span>
+            </button>
+            <button type="button" class="avatar-option" data-avatar="☣️" title="Hazard">
+              <span class="avatar-icon">☣️</span>
+              <span class="avatar-label">Hazard</span>
+            </button>
+            <button type="button" class="avatar-option" data-avatar="🎯" title="Deadeye">
+              <span class="avatar-icon">🎯</span>
+              <span class="avatar-label">Deadeye</span>
+            </button>
+            <button type="button" class="avatar-option" data-avatar="🚀" title="Titan">
+              <span class="avatar-icon">🚀</span>
+              <span class="avatar-label">Titan</span>
+            </button>
           </div>
         </div>
 
-        <div>
-          <div class="hud-stat-label mb-2">TOP SURVIVORS LEADERBOARD</div>
-          <table class="stats-table" id="leaderboard-table">
-            <!-- Dynamically populated from JS -->
-          </table>
+        <!-- Callsign Input (3-15 chars, alphanumeric) -->
+        <div class="mt-2">
+          <div class="label-with-counter">
+            <label class="hud-stat-label" for="profile-username-input">PLAYER HANDLE / NICKNAME</label>
+            <span class="char-counter" id="profile-char-counter">0/15</span>
+          </div>
+          <div class="create-profile-row mt-1">
+            <input type="text" id="profile-username-input" class="input-field" placeholder="e.g. Ghost_99" maxlength="15" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="input-feedback" id="profile-input-feedback">3–15 characters (letters, numbers & _ only)</div>
         </div>
 
-        <button class="btn-pill mt-2" id="btn-profile-start">Start Game</button>
+        <!-- Quick Switch Profile Dropdown (For multi-profile support on this device) -->
+        <div class="mt-2" id="saved-profiles-section">
+          <label class="hud-stat-label" for="profile-select-dropdown">SAVED PROFILES ON THIS DEVICE</label>
+          <select id="profile-select-dropdown" class="input-field mt-1"></select>
+        </div>
+
+        <div class="modal-action-buttons mt-3">
+          <button class="btn-pill" id="btn-profile-start">Save & Play</button>
+          <button class="btn-pill btn-secondary" id="btn-profile-leaderboard">Global Top 10</button>
+        </div>
       </div>
     </div>
 
@@ -286,6 +334,7 @@
           <p><strong>3. Take Cover:</strong> Stand behind grey shield barricades or step out of the danger line before the beam fires.</p>
           <p><strong>4. Oracle Protocol:</strong> When reduced to 2 lifelines, predict the next strike direction (North/South/East/West) to restore a shield.</p>
           <p><strong>5. Streaks:</strong> Every 5 waves survived without taking a hit earns +3 bonus points and an emerald aura.</p>
+          <p><strong>6. Global Leaderboard:</strong> Your high score syncs worldwide in real time via Supabase PostgreSQL!</p>
         </div>
         <button class="btn-pill" id="btn-help-close">Got It</button>
       </div>
@@ -303,8 +352,53 @@
       </div>
     </div>
 
+    <!-- MODAL 6: Global Real-Time Leaderboard (Supabase WebSocket) -->
+    <div class="modal-backdrop" id="modal-leaderboard">
+      <div class="modal-card glass-panel leaderboard-card">
+        <div class="leaderboard-header">
+          <div>
+            <div class="brand-badge mb-1">
+              <span class="brand-dot"></span>
+              <span>SUPABASE REALTIME</span>
+            </div>
+            <h2 class="modal-title">Global Top 10</h2>
+          </div>
+          <div class="live-status-pill" id="leaderboard-status-badge">
+            <span class="live-dot"></span>
+            <span id="leaderboard-status-text">LIVE SYNC</span>
+          </div>
+        </div>
+
+        <p class="modal-desc">Instant real-time sync across players worldwide via WebSockets.</p>
+
+        <!-- Leaderboard Table Container -->
+        <div class="leaderboard-table-wrap">
+          <table class="global-leaderboard-table">
+            <thead>
+              <tr>
+                <th class="col-rank">Rank</th>
+                <th class="col-player">Survivor</th>
+                <th class="col-score">High Score</th>
+              </tr>
+            </thead>
+            <tbody id="global-leaderboard-body">
+              <!-- Dynamically populated from Supabase realtime -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="modal-action-buttons mt-3">
+          <button class="btn-pill" id="btn-leaderboard-close">Back to Arena</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
+  <!-- Supabase JS v2 Client (Lightweight Official CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase Cloud Database Configuration -->
+  <script src="supabase_config.js"></script>
   <!-- Main Game Engine Script -->
   <script src="script.js"></script>
 </body>

@@ -257,13 +257,31 @@
      3. LOCAL STORAGE DATA PERSISTENCE
      Safely handles save games with an in-memory fallback for private mode.
      ========================================================================== */
-  const SAVE_KEY = 'pulsegrid.save.v1';
+  const SAVE_KEY = 'redzombies.save.v2';
+  let isFirstVisit = false;
+
+  function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // High-entropy UUID v4 fallback
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
   let gameSaveData = {
-    schemaVersion: 1,
-    lastActiveProfile: 'Survivor',
+    schemaVersion: 2,
+    userId: generateUUID(),
+    lastActiveProfile: 'Survivor_01',
+    currentAvatar: '💀',
     muted: false,
     profiles: {
-      'Survivor': {
+      'Survivor_01': {
+        userId: null,
+        avatarIcon: '💀',
         highScore: 0,
         gamesPlayed: 0,
         totalWavesSurvived: 0,
@@ -280,7 +298,13 @@
         const parsed = JSON.parse(stored);
         if (parsed && parsed.profiles) {
           gameSaveData = parsed;
+          if (!gameSaveData.userId) {
+            gameSaveData.userId = generateUUID();
+          }
         }
+      } else {
+        isFirstVisit = true;
+        gameSaveData.userId = generateUUID();
       }
     } catch (err) {
       console.warn('LocalStorage not accessible, running session storage only.');
@@ -387,17 +411,26 @@
     gameoverNewBest: document.getElementById('gameover-newbest'),
     btnRestart: document.getElementById('btn-restart'),
     btnSwitchUser: document.getElementById('btn-switch-user'),
+    btnGameoverLeaderboard: document.getElementById('btn-gameover-leaderboard'),
     modalProfile: document.getElementById('modal-profile'),
     profileDropdown: document.getElementById('profile-select-dropdown'),
-    profileNewName: document.getElementById('profile-new-name'),
-    btnProfileCreate: document.getElementById('btn-profile-create'),
+    profileUsernameInput: document.getElementById('profile-username-input'),
+    profileCharCounter: document.getElementById('profile-char-counter'),
+    profileInputFeedback: document.getElementById('profile-input-feedback'),
     btnProfileStart: document.getElementById('btn-profile-start'),
-    leaderboardTable: document.getElementById('leaderboard-table'),
+    btnProfileLeaderboard: document.getElementById('btn-profile-leaderboard'),
     modalHelp: document.getElementById('modal-help'),
     btnHelpClose: document.getElementById('btn-help-close'),
     modalPause: document.getElementById('modal-pause'),
     btnResume: document.getElementById('btn-resume'),
-    btnPauseRestart: document.getElementById('btn-pause-restart')
+    btnPauseRestart: document.getElementById('btn-pause-restart'),
+    // Global Leaderboard Modal
+    leaderboardToggleBtn: document.getElementById('btn-leaderboard-toggle'),
+    modalLeaderboard: document.getElementById('modal-leaderboard'),
+    globalLeaderboardBody: document.getElementById('global-leaderboard-body'),
+    leaderboardStatusBadge: document.getElementById('leaderboard-status-badge'),
+    leaderboardStatusText: document.getElementById('leaderboard-status-text'),
+    btnLeaderboardClose: document.getElementById('btn-leaderboard-close')
   };
 
   particles = new ParticleManager(dom.canvas);
@@ -581,7 +614,9 @@
     dom.hudScore.textContent = gameState.score;
     dom.hudBest.textContent = gameState.personalBest;
     dom.hudProfileName.textContent = gameState.activeProfile;
-    dom.hudAvatar.textContent = gameState.activeProfile.charAt(0).toUpperCase();
+    const activeProf = gameSaveData.profiles[gameState.activeProfile];
+    const avatar = (activeProf && activeProf.avatarIcon) || gameSaveData.currentAvatar || '💀';
+    dom.hudAvatar.textContent = avatar;
 
     // Lifeline capsules visual state
     dom.capsules.forEach((capsule, index) => {
@@ -971,6 +1006,9 @@
       currentProfile.highScore = gameState.score;
       sound.playHighScoreFanfare();
       setTimeout(() => particles.spawnHighScoreConfetti(), 300);
+      submitScore(gameState.score);
+    } else if (currentProfile.highScore > 0) {
+      submitScore(currentProfile.highScore);
     }
 
     currentProfile.gamesPlayed++;
@@ -1052,28 +1090,273 @@
   }
 
   /* ==========================================================================
-     13. PROFILE & LEADERBOARD MANAGEMENT
+     13. SUPABASE REAL-TIME LEADERBOARD & PROFILE ENGINE
      ========================================================================== */
+  let supabaseClient = null;
+  let realtimeChannel = null;
+  let selectedAvatar = '💀';
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function sanitizeUsername(raw) {
+    if (!raw) return 'Survivor';
+    // Character limit 3–15 characters, alphanumeric and underscore only, sanitized against XSS
+    return raw.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 15);
+  }
+
+  function initSupabase() {
+    try {
+      if (typeof window.isSupabaseConfigured === 'function' && window.isSupabaseConfigured() && window.supabase) {
+        supabaseClient = window.supabase.createClient(
+          window.SUPABASE_CONFIG.url,
+          window.SUPABASE_CONFIG.anonKey
+        );
+
+        if (dom.leaderboardStatusBadge) {
+          dom.leaderboardStatusBadge.classList.remove('offline');
+          dom.leaderboardStatusText.textContent = 'LIVE SYNC';
+        }
+
+        subscribeToLeaderboard();
+        console.log('Supabase Realtime Client initialized successfully.');
+      } else {
+        if (dom.leaderboardStatusBadge) {
+          dom.leaderboardStatusBadge.classList.add('offline');
+          dom.leaderboardStatusText.textContent = 'LOCAL MODE';
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase initialization failed:', err);
+      if (dom.leaderboardStatusBadge) {
+        dom.leaderboardStatusBadge.classList.add('offline');
+        dom.leaderboardStatusText.textContent = 'OFFLINE';
+      }
+    }
+  }
+
+  function subscribeToLeaderboard() {
+    if (!supabaseClient) return;
+
+    try {
+      if (realtimeChannel) {
+        realtimeChannel.unsubscribe();
+      }
+
+      realtimeChannel = supabaseClient
+        .channel('public:leaderboard')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'leaderboard' },
+          (payload) => {
+            console.log('Realtime score change received from Supabase:', payload.eventType);
+            fetchTop10();
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('Connected to Supabase Realtime WebSocket channel!');
+          }
+        });
+    } catch (err) {
+      console.warn('Error subscribing to Supabase Realtime channel:', err);
+    }
+  }
+
+  async function fetchTop10() {
+    if (!dom.globalLeaderboardBody) return;
+
+    // Display skeleton loading shimmers while awaiting response
+    renderLeaderboardSkeletons();
+
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('leaderboard')
+          .select('user_id, username, avatar_icon, high_score')
+          .order('high_score', { ascending: false })
+          .limit(10);
+
+        if (error) {
+          console.warn('Error fetching Supabase leaderboard:', error.message);
+          renderFallbackLeaderboard('Unable to fetch live scores. Showing local records.');
+          return;
+        }
+
+        renderLeaderboardRows(data);
+      } catch (err) {
+        console.warn('Supabase fetch exception:', err);
+        renderFallbackLeaderboard('Offline. Showing local records.');
+      }
+    } else {
+      // Local fallback mode
+      renderFallbackLeaderboard();
+    }
+  }
+
+  function renderLeaderboardSkeletons() {
+    let skeletonHtml = '';
+    for (let i = 0; i < 5; i++) {
+      skeletonHtml += `
+        <tr class="skeleton-row">
+          <td class="col-rank"><div class="skeleton-shimmer skeleton-circle"></div></td>
+          <td class="col-player"><div class="skeleton-shimmer skeleton-bar-long"></div></td>
+          <td class="col-score"><div class="skeleton-shimmer skeleton-bar-short"></div></td>
+        </tr>
+      `;
+    }
+    dom.globalLeaderboardBody.innerHTML = skeletonHtml;
+  }
+
+  function renderLeaderboardRows(records) {
+    if (!records || records.length === 0) {
+      dom.globalLeaderboardBody.innerHTML = `
+        <tr>
+          <td colspan="3">
+            <div class="empty-leaderboard-box">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              <div>No global scores recorded yet!</div>
+              <small>Survive a round to claim Rank #1!</small>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    const currentUserId = gameSaveData.userId;
+    let rowsHtml = '';
+
+    records.forEach((record, index) => {
+      const rank = index + 1;
+      let badgeClass = 'rank-standard';
+      if (rank === 1) badgeClass = 'rank-1';
+      else if (rank === 2) badgeClass = 'rank-2';
+      else if (rank === 3) badgeClass = 'rank-3';
+
+      const isCurrentUser = record.user_id === currentUserId || record.username === gameState.activeProfile;
+      const rowClass = isCurrentUser ? 'leaderboard-row current-user-row' : 'leaderboard-row';
+      const userTag = isCurrentUser ? '<span class="current-user-tag">YOU</span>' : '';
+      const avatar = record.avatar_icon || '💀';
+      const safeName = escapeHtml(record.username);
+
+      rowsHtml += `
+        <tr class="${rowClass}">
+          <td class="col-rank">
+            <span class="rank-badge ${badgeClass}">${rank}</span>
+          </td>
+          <td class="col-player">
+            <div class="player-info-cell">
+              <span class="player-avatar-small">${avatar}</span>
+              <span class="player-name-text">${safeName}</span>
+              ${userTag}
+            </div>
+          </td>
+          <td class="col-score tabular">${record.high_score}</td>
+        </tr>
+      `;
+    });
+
+    dom.globalLeaderboardBody.innerHTML = rowsHtml;
+  }
+
+  function renderFallbackLeaderboard(notice = null) {
+    const sortedProfiles = Object.entries(gameSaveData.profiles)
+      .map(([name, stats]) => ({
+        user_id: stats.userId || gameSaveData.userId,
+        username: name,
+        avatar_icon: stats.avatarIcon || gameSaveData.currentAvatar || '💀',
+        high_score: stats.highScore || 0
+      }))
+      .sort((a, b) => b.high_score - a.high_score)
+      .slice(0, 10);
+
+    renderLeaderboardRows(sortedProfiles);
+
+    if (notice) {
+      console.info(notice);
+    }
+  }
+
+  // Debounced cloud score submission
+  let lastScoreSubmitTime = 0;
+  async function submitScore(score) {
+    if (!supabaseClient) return;
+    const now = Date.now();
+    if (now - lastScoreSubmitTime < 1000) return; // Prevent spamming
+    lastScoreSubmitTime = now;
+
+    const currentProfile = gameSaveData.profiles[gameState.activeProfile];
+    if (!currentProfile) return;
+
+    try {
+      const sanitizedName = sanitizeUsername(gameState.activeProfile);
+      const avatar = currentProfile.avatarIcon || gameSaveData.currentAvatar || '💀';
+      const userId = gameSaveData.userId;
+
+      const { error } = await supabaseClient
+        .from('leaderboard')
+        .upsert(
+          {
+            user_id: userId,
+            username: sanitizedName,
+            avatar_icon: avatar,
+            high_score: score,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'user_id' }
+        );
+
+      if (error) {
+        console.warn('Supabase upsert warning:', error.message);
+      } else {
+        console.log('Score synced to Supabase successfully:', score);
+      }
+    } catch (err) {
+      console.warn('Network exception while syncing score to Supabase:', err);
+    }
+  }
+
+  function setupAvatarPicker() {
+    const avatarButtons = document.querySelectorAll('.avatar-option');
+    avatarButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        avatarButtons.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedAvatar = btn.getAttribute('data-avatar') || '💀';
+      });
+    });
+  }
+
+  function setAvatarPickerSelection(avatar) {
+    selectedAvatar = avatar || '💀';
+    const avatarButtons = document.querySelectorAll('.avatar-option');
+    avatarButtons.forEach(b => {
+      if (b.getAttribute('data-avatar') === selectedAvatar) {
+        b.classList.add('selected');
+      } else {
+        b.classList.remove('selected');
+      }
+    });
+  }
+
   function populateProfileDropdown() {
+    if (!dom.profileDropdown) return;
     dom.profileDropdown.innerHTML = '';
     Object.keys(gameSaveData.profiles).forEach(profileName => {
       const option = document.createElement('option');
       option.value = profileName;
-      option.textContent = `${profileName} (Best: ${gameSaveData.profiles[profileName].highScore})`;
+      const avatar = gameSaveData.profiles[profileName].avatarIcon || '💀';
+      option.textContent = `${avatar} ${profileName} (Best: ${gameSaveData.profiles[profileName].highScore})`;
       if (profileName === gameState.activeProfile) option.selected = true;
       dom.profileDropdown.appendChild(option);
-    });
-
-    // Populate Top 5 Leaderboard
-    const sortedProfiles = Object.entries(gameSaveData.profiles)
-      .sort((a, b) => b[1].highScore - a[1].highScore)
-      .slice(0, 5);
-
-    dom.leaderboardTable.innerHTML = '';
-    sortedProfiles.forEach(([name, stats], index) => {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>#${index + 1} ${name}</td><td>${stats.highScore} pts</td>`;
-      dom.leaderboardTable.appendChild(row);
     });
   }
 
@@ -1082,28 +1365,70 @@
     gameState.activeProfile = profileName;
     gameSaveData.lastActiveProfile = profileName;
     gameState.personalBest = gameSaveData.profiles[profileName].highScore;
+    const profAvatar = gameSaveData.profiles[profileName].avatarIcon || '💀';
+    gameSaveData.currentAvatar = profAvatar;
+    setAvatarPickerSelection(profAvatar);
+
+    if (dom.profileUsernameInput) {
+      dom.profileUsernameInput.value = profileName;
+      if (dom.profileCharCounter) {
+        dom.profileCharCounter.textContent = `${profileName.length}/15`;
+      }
+    }
+
     commitSavedData();
     updateHUD();
   }
 
-  function createNewProfile(rawName) {
-    if (!rawName) return;
-    // Allow any UTF-8 letters (a-z, A-Z), digits (0-9), spaces, and special symbols (e.g. #007, Player_1, @Nova)
-    const cleanedName = rawName.trim().replace(/\s+/g, ' ').slice(0, 20);
-    if (!cleanedName) return;
+  function saveOrUpdateProfile(rawName, avatar) {
+    const sanitized = sanitizeUsername(rawName);
+    if (!sanitized || sanitized.length < 3) return false;
 
-    if (!gameSaveData.profiles[cleanedName]) {
-      gameSaveData.profiles[cleanedName] = {
+    if (!gameSaveData.profiles[sanitized]) {
+      gameSaveData.profiles[sanitized] = {
+        userId: gameSaveData.userId,
+        avatarIcon: avatar,
         highScore: 0,
         gamesPlayed: 0,
         totalWavesSurvived: 0,
         longestStreak: 0,
         createdAt: new Date().toISOString()
       };
+    } else {
+      gameSaveData.profiles[sanitized].avatarIcon = avatar;
     }
-    setActiveProfile(cleanedName);
+
+    gameSaveData.currentAvatar = avatar;
+    setActiveProfile(sanitized);
     populateProfileDropdown();
-    dom.profileNewName.value = '';
+
+    // Register in Supabase if score already exists
+    if (gameSaveData.profiles[sanitized].highScore > 0) {
+      submitScore(gameSaveData.profiles[sanitized].highScore);
+    }
+    return true;
+  }
+
+  function openProfileModal() {
+    gameState.paused = true;
+    populateProfileDropdown();
+    if (dom.profileUsernameInput) {
+      dom.profileUsernameInput.value = gameState.activeProfile;
+      if (dom.profileCharCounter) {
+        dom.profileCharCounter.textContent = `${gameState.activeProfile.length}/15`;
+      }
+    }
+    const currentAvatar = (gameSaveData.profiles[gameState.activeProfile] && gameSaveData.profiles[gameState.activeProfile].avatarIcon) || gameSaveData.currentAvatar || '💀';
+    setAvatarPickerSelection(currentAvatar);
+    dismissAllModals();
+    dom.modalProfile.classList.add('open');
+  }
+
+  function openLeaderboardModal() {
+    gameState.paused = true;
+    dismissAllModals();
+    dom.modalLeaderboard.classList.add('open');
+    fetchTop10();
   }
 
   /* ==========================================================================
@@ -1115,6 +1440,7 @@
     dom.modalProfile.classList.remove('open');
     dom.modalHelp.classList.remove('open');
     dom.modalPause.classList.remove('open');
+    if (dom.modalLeaderboard) dom.modalLeaderboard.classList.remove('open');
   }
 
   function togglePauseState() {
@@ -1154,7 +1480,7 @@
     if (gameSaveData.lastActiveProfile && gameSaveData.profiles[gameSaveData.lastActiveProfile]) {
       gameState.activeProfile = gameSaveData.lastActiveProfile;
     } else {
-      gameState.activeProfile = Object.keys(gameSaveData.profiles)[0] || 'Survivor';
+      gameState.activeProfile = Object.keys(gameSaveData.profiles)[0] || 'Survivor_01';
     }
     gameState.personalBest = gameSaveData.profiles[gameState.activeProfile]?.highScore || 0;
 
@@ -1162,6 +1488,11 @@
     sound.muted = !!gameSaveData.muted;
     dom.iconSoundOn.style.display = sound.muted ? 'none' : 'block';
     dom.iconSoundOff.style.display = sound.muted ? 'block' : 'none';
+
+    // Setup Avatar Picker
+    setupAvatarPicker();
+    const currentAvatar = (gameSaveData.profiles[gameState.activeProfile] && gameSaveData.profiles[gameState.activeProfile].avatarIcon) || gameSaveData.currentAvatar || '💀';
+    setAvatarPickerSelection(currentAvatar);
 
     // Attach keyboard listener
     window.addEventListener('keydown', handleKeyboardInput);
@@ -1214,44 +1545,86 @@
       gameState.paused = false;
     });
 
-    // Profile switcher dialog
-    dom.hudProfileBtn.addEventListener('click', () => {
-      gameState.paused = true;
-      populateProfileDropdown();
-      dom.modalProfile.classList.add('open');
-    });
+    // Profile modal & HUD edit button
+    dom.hudProfileBtn.addEventListener('click', openProfileModal);
+
     dom.profileDropdown.addEventListener('change', (e) => {
       setActiveProfile(e.target.value);
     });
 
-    // Enter key creates and selects the profile instantly
-    dom.profileNewName.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const pendingName = dom.profileNewName.value.trim();
-        if (pendingName) {
-          createNewProfile(pendingName);
+    // Live validation & character counter on username input
+    if (dom.profileUsernameInput) {
+      dom.profileUsernameInput.value = gameState.activeProfile;
+      if (dom.profileCharCounter) {
+        dom.profileCharCounter.textContent = `${gameState.activeProfile.length}/15`;
+      }
+
+      dom.profileUsernameInput.addEventListener('input', () => {
+        const raw = dom.profileUsernameInput.value;
+        const sanitized = raw.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 15);
+        if (raw !== sanitized) {
+          dom.profileUsernameInput.value = sanitized;
         }
-      }
-    });
+        if (dom.profileCharCounter) {
+          dom.profileCharCounter.textContent = `${sanitized.length}/15`;
+        }
 
-    dom.btnProfileCreate.addEventListener('click', () => {
-      const pendingName = dom.profileNewName.value.trim();
-      if (pendingName) {
-        createNewProfile(pendingName);
-      }
-    });
+        if (sanitized.length < 3) {
+          dom.profileInputFeedback.textContent = 'Minimum 3 alphanumeric characters required.';
+          dom.profileInputFeedback.className = 'input-feedback error';
+        } else {
+          dom.profileInputFeedback.textContent = '3–15 characters (letters, numbers & _ only)';
+          dom.profileInputFeedback.className = 'input-feedback';
+        }
+      });
 
-    dom.btnProfileStart.addEventListener('click', () => {
+      dom.profileUsernameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleProfileSaveAndStart();
+        }
+      });
+    }
+
+    function handleProfileSaveAndStart() {
       sound.ensureContext();
-      // If user typed a callsign without manually pressing Create, auto-create it now!
-      const pendingName = dom.profileNewName.value.trim();
-      if (pendingName) {
-        createNewProfile(pendingName);
+      const enteredName = dom.profileUsernameInput ? dom.profileUsernameInput.value.trim() : '';
+      const sanitized = sanitizeUsername(enteredName);
+
+      if (sanitized.length < 3) {
+        if (dom.profileInputFeedback) {
+          dom.profileInputFeedback.textContent = 'Name must be 3–15 characters (alphanumeric & _ only)!';
+          dom.profileInputFeedback.className = 'input-feedback error';
+        }
+        if (dom.profileUsernameInput) dom.profileUsernameInput.focus();
+        return;
       }
+
+      saveOrUpdateProfile(sanitized, selectedAvatar);
       dismissAllModals();
       startNewGame();
-    });
+    }
+
+    dom.btnProfileStart.addEventListener('click', handleProfileSaveAndStart);
+
+    // Leaderboard navigation buttons
+    if (dom.leaderboardToggleBtn) {
+      dom.leaderboardToggleBtn.addEventListener('click', openLeaderboardModal);
+    }
+    if (dom.btnLeaderboardClose) {
+      dom.btnLeaderboardClose.addEventListener('click', () => {
+        dismissAllModals();
+        if (gameState.phase !== GamePhase.GAME_OVER && gameState.phase !== GamePhase.PROFILE_SELECT) {
+          gameState.paused = false;
+        }
+      });
+    }
+    if (dom.btnGameoverLeaderboard) {
+      dom.btnGameoverLeaderboard.addEventListener('click', openLeaderboardModal);
+    }
+    if (dom.btnProfileLeaderboard) {
+      dom.btnProfileLeaderboard.addEventListener('click', openLeaderboardModal);
+    }
 
     // Direct cell click/tap controls (allows tapping directly on arena to move)
     dom.gridCells.forEach(cell => {
@@ -1296,16 +1669,12 @@
     // Ensure audio context is ready on first touch anywhere
     document.addEventListener('pointerdown', () => sound.ensureContext(), { once: true });
 
-    // Restart buttons
+    // Restart & switch user buttons
     dom.btnRestart.addEventListener('click', () => {
       sound.ensureContext();
       startNewGame();
     });
-    dom.btnSwitchUser.addEventListener('click', () => {
-      dismissAllModals();
-      populateProfileDropdown();
-      dom.modalProfile.classList.add('open');
-    });
+    dom.btnSwitchUser.addEventListener('click', openProfileModal);
 
     // Oracle vector selection buttons
     document.querySelectorAll('.vector-btn').forEach(btn => {
@@ -1316,13 +1685,21 @@
       });
     });
 
+    // Initialize Supabase Cloud Database & WebSockets
+    initSupabase();
+
     // Initial render
     populateProfileDropdown();
     updateHUD();
     updatePlayerVisuals();
 
-    // Show profile modal on start
-    dom.modalProfile.classList.add('open');
+    // Check if first visit: prompt profile modal on first launch
+    if (isFirstVisit) {
+      openProfileModal();
+    } else {
+      // Prompt modal so user can jump in or edit
+      dom.modalProfile.classList.add('open');
+    }
 
     // Kick off sole RAF game loop
     rafLoopId = requestAnimationFrame(mainGameLoop);
