@@ -1,58 +1,123 @@
-# RedZombies — 3×3 Grid Survival Game
+# 🧟 RedZombies — 3×3 Grid Survival Game
 
-A fast-paced, glassmorphic 3×3 browser survival game built with pure **HTML5, CSS3, and modern JavaScript (ES6+)**. 
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![Web Audio API](https://img.shields.io/badge/Web%20Audio%20API-Synthesizer-06b6d4?style=for-the-badge)
+![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-Zero external dependencies, zero backend required, with real-time procedural sound synthesis via the **Web Audio API**.
+A high-octane, glassmorphic 3×3 browser survival game built entirely using **pure HTML5, CSS3, and modern Vanilla JavaScript (ES6+)**. 
+
+Zero external runtime dependencies, zero backend or framework bloat, with procedural real-time retro sound synthesis powered by the native **Web Audio API**.
 
 ---
 
-## 🎮 Gameplay & Rules
+## 🌐 Live Demo
 
-An orbital hazard grid sweeps across a 3×3 arena with lethal light beams:
-1. **Evade Strikes**: Move your survivor across the grid using **Arrow Keys / WASD** (or the on-screen glass D-pad on mobile).
-2. **Warning Indicator**: When a row or column pulses red, an attack is charging. The outer directional arrow reveals which side the beam fires from.
-3. **Take Cover**: Step behind grey shield barricades or move completely out of the targeted line before the beam discharges.
-4. **Oracle Protocol**: When down to 2 lifelines, predict the next attack vector (North, South, East, West) to recharge a lost shield.
-5. **Streak Multiplier**: Every 5 consecutive waves survived without taking damage grants +3 bonus score and an emerald aura.
+Play directly in your browser:  
+👉 **[https://aditya2438.github.io/Redzombies/](https://aditya2438.github.io/Redzombies/)**
+
+---
+
+## 🎮 Game Overview & Lore
+
+A hostile orbital defense grid sweeps across a compact 3×3 arena with lethal red laser beams. As the survivor, you must read the charging visual warnings, predict the attack vector, and either:
+1. **Evade the targeted line** before the beam fires, OR
+2. **Take cover behind temporary shield barricades** deployed within the strike zone.
+
+Survive consecutive waves to increase your score, unlock streak multiplier bonuses, and climb the local leaderboard!
+
+---
+
+## ⚡ Key Features
+
+- 💎 **Apple-Glass Aesthetic**: Sleek dark UI with radial space gradients, hairline borders, frosted glass (`backdrop-filter: blur(20px)`), and fallback support.
+- 📱 **Multi-Device Responsive**: Dynamic fluid layout with CSS `clamp()`, `min()`, and `100dvh` viewport containment (zero page scrollbars). Looks pristine on:
+  - Small Mobile (iPhone SE / 340px)
+  - Flagship Smartphones (iPhone 16 Pro Max, Samsung Galaxy S24 Ultra / 412px)
+  - Tablets (iPad / 768px)
+  - Laptops & Desktops (1024px – 1920px)
+  - Curved Ultrawide & 4K Smart TVs
+- 🖥️ **Interactive Viewport Tester**: Header toggle allows instant previewing and testing of Mobile Small, Mobile Large, Tablet, Laptop, and TV views right on your computer.
+- 🔊 **Procedural Web Audio Synthesizer**: 11 unique real-time sound effects generated via native `AudioContext`, `OscillatorNode`, and `GainNode` envelopes (no MP3 files to download):
+  - Movement blips (600Hz sine)
+  - Accelerating warning pulse ticks
+  - Shield spawn sweeps
+  - Sub-bass safe impact thuds
+  - Dual-layer damage crunch (white noise + 90Hz thud)
+  - Crystal shield block chimes
+  - Lifeline lost/gained arpeggios
+  - 5-Wave streak celebration sparkle
+  - Game over & high score fanfares
+- 🔮 **Oracle Protocol (Lifeline Emergency)**: When reduced to 2 lifelines for the first time, an emergency protocol halts the grid clock and prompts you to predict the next strike vector (North, South, East, West). Guess correctly to restore a shield!
+- ⏱️ **Single-Clock RAF Game Loop**: One deterministic `requestAnimationFrame` loop with delta timing that structurally eliminates `setTimeout` race conditions and memory leaks.
+- 💥 **Canvas Particle FX**: 2D HTML5 canvas particle system rendering emerald spark bursts on shield blocks and multi-colored confetti showers on new high scores.
+- 💾 **Safe Local Persistence**: `localStorage` saving with try/catch memory fallback for private browsing, tracking multiple user profiles, games played, lifetime waves survived, and top-5 local high scores.
 
 ---
 
 ## 🕹️ Controls
 
-| Action | Desktop Keyboard | Mobile / Touch |
+| Control | Desktop / Laptop Keyboard | Mobile & Tablet Touch |
 | :--- | :--- | :--- |
 | **Move Up** | `W` or `ArrowUp` | Tap `⬆` button |
 | **Move Down** | `S` or `ArrowDown` | Tap `⬇` button |
 | **Move Left** | `A` or `ArrowLeft` | Tap `⬅` button |
 | **Move Right** | `D` or `ArrowRight` | Tap `➡` button |
 | **Pause / Resume** | `P` or `Escape` | Tap `⏸` header button |
+| **Mute / Unmute** | Click Sound Icon | Tap `🔊` header button |
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 📂 Project Structure
 
-- **Frontend**: Semantic HTML5, CSS3 Glassmorphism (`backdrop-filter: blur(20px)`), Vanilla JavaScript (ES6+).
-- **Audio Engine**: Native **Web Audio API** procedural sound synthesizer (OscillatorNode, GainNode, noise buffer) — no external MP3s needed.
-- **Game Loop**: Deterministic `requestAnimationFrame` single-clock loop with delta timing.
-- **Particle System**: 2D Canvas rendering for shield spark bursts and victory confetti.
-- **Persistence**: Safe `localStorage` schema supporting multiple player profiles and local top-5 leaderboards.
-- **Device Adaptivity**: Fluid CSS units (`clamp()`, `min()`, `100dvh`) with an interactive viewport tester for iPhone, iPad, Laptop, and 4K TV views.
+```
+Redzombies/
+├── index.html       # Semantic HTML5 markup, HUD layout, 3x3 arena, and modal dialogs
+├── style.css        # Glassmorphic CSS styling, responsive media queries, animations
+├── script.js        # Pure Vanilla JS game engine, Web Audio synth, state machine, particles
+├── .gitignore       # Git ignore rules for OS and editor cache files
+└── README.md        # Comprehensive project documentation
+```
 
 ---
 
-## 🚀 How to Run Locally
+## 🚀 Running Locally
 
-1. Clone or download this repository:
+1. Clone this repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/redzombies.git
+   git clone https://github.com/aditya2438/Redzombies.git
    ```
-2. Open `index.html` directly in any modern web browser (Chrome, Edge, Firefox, Safari) or use VS Code Live Server.
+2. Navigate to the project directory:
+   ```bash
+   cd Redzombies
+   ```
+3. Open `index.html` directly in your browser:
+   - On Windows: Double-click `index.html` or run `start index.html` in PowerShell.
+   - Or use the VS Code extension **Live Server**.
 
 ---
 
-## 🌐 Deploy to GitHub Pages (Free Hosting)
+## ⚙️ How It Works (Technical Highlights)
 
-1. Go to your repository settings on GitHub (`Settings` > `Pages`).
-2. Under **Build and deployment**, select **Deploy from a branch**.
-3. Choose the `main` branch and `/ (root)` folder, then click **Save**.
-4. Your game will be live on the web at `https://YOUR_USERNAME.github.io/redzombies/`!
+- **Deterministic Collision Snapshot**: At the exact start of the `STRIKE` phase, the player's position is snapshotted:
+  $$\text{Hit} = (Player \in \text{DangerLine}) \land (\text{Cell has no barrier})$$
+  Movement is gated at the input handler level during `STRIKE`, making the collision resolution unexploitable.
+- **Dynamic Difficulty Ramping**:
+  - Warning duration decreases as waves progress: $\max(1200\text{ms}, 3000\text{ms} - (\text{round} - 1) \times 120\text{ms})$.
+  - Strike duration sharpens: $\max(350\text{ms}, 600\text{ms} - (\text{round} - 1) \times 15\text{ms})$.
+  - Shield barriers scale down from 2–3 in early rounds to 1 in later rounds.
+
+---
+
+## 👤 Author
+
+**Aditya Chouhan**
+- GitHub: [@aditya2438](https://github.com/aditya2438)
+- Email: aditya9993454129@gmail.com
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - feel free to play, fork, and learn!
