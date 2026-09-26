@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>RedZombies — Survival Grid Game</title>
+  
+  <!-- Google Fonts: Inter for clean UI, Space Grotesk for arcade style numbers -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- External Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Outer shell wrapper (Supports simulated screen testing: Mobile, Tablet, Laptop, TV) -->
+  <div id="device-shell" class="mode-auto">
+    
+    <!-- Red screen vignette flash when taking damage -->
+    <div id="hit-vignette"></div>
+
+    <!-- Canvas layer for spark effects and victory confetti -->
+    <canvas id="fx-canvas"></canvas>
+
+    <!-- Main Game Container -->
+    <div id="game-container">
+      
+      <!-- Top Navigation / Game Header -->
+      <header class="top-toolbar">
+        <div class="brand-badge">
+          <span class="brand-dot"></span>
+          <span class="brand-name">RedZombies</span>
+        </div>
+        
+        <div class="toolbar-actions">
+          <!-- Viewport simulator button for testing mobile/tablet views -->
+          <button class="tool-btn" id="btn-device-view" title="Toggle device preview" aria-label="Toggle Device View">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            <span id="device-view-label">Auto</span>
+          </button>
+          
+          <!-- Sound on/off button -->
+          <button class="tool-btn" id="btn-sound-toggle" title="Toggle sound" aria-label="Toggle Sound">
+            <svg id="icon-sound-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            <svg id="icon-sound-off" style="display:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+          </button>
+
+          <!-- Pause button -->
+          <button class="tool-btn" id="btn-pause" title="Pause game" aria-label="Pause Game">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+          </button>
+
+          <!-- Help / Instructions button -->
+          <button class="tool-btn" id="btn-help" title="Rules and instructions" aria-label="How to Play">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Glassmorphic Heads-Up Display (HUD) -->
+      <section id="hud" class="glass-panel" aria-label="Game HUD">
+        <div class="hud-row">
+          <!-- Profile Badge -->
+          <button class="profile-pill" id="btn-profile-switch" aria-label="Switch Profile">
+            <span class="profile-avatar" id="hud-avatar">S</span>
+            <span id="hud-profile-name">Survivor</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+
+          <!-- Current Wave / Round -->
+          <div class="hud-stat-box center">
+            <div class="hud-stat-label">ROUND</div>
+            <div class="hud-stat-value tabular" id="hud-round">1</div>
+          </div>
+
+          <!-- Score & Best High Score -->
+          <div class="hud-stat-box">
+            <div class="hud-stat-label">SCORE</div>
+            <div class="hud-stat-value tabular" id="hud-score">0</div>
+            <div class="hud-stat-label sub">BEST <span class="tabular" id="hud-best">0</span></div>
+          </div>
+        </div>
+
+        <!-- Health / Lifeline Capsules and Streak Meter -->
+        <div class="lifelines-row">
+          <div class="capsules-track" id="capsules-track" aria-label="Remaining Health">
+            <div class="capsule" data-idx="0"></div>
+            <div class="capsule" data-idx="1"></div>
+            <div class="capsule" data-idx="2"></div>
+            <div class="capsule" data-idx="3"></div>
+            <div class="capsule" data-idx="4"></div>
+          </div>
+          
+          <div class="streak-badge" id="streak-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span id="streak-count">0 STREAK</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3x3 Arena Grid Section -->
+      <main id="arena-wrap">
+        <div id="grid-viewport" class="glass-panel">
+          
+          <!-- Directional Warning Edge Arrows indicating strike vector -->
+          <div id="arrow-n" class="edge-arrow edge-n">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div id="arrow-s" class="edge-arrow edge-s">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+          </div>
+          <div id="arrow-w" class="edge-arrow edge-w">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+          <div id="arrow-e" class="edge-arrow edge-e">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </div>
+
+          <!-- 3x3 Grid Matrix -->
+          <div id="grid-3x3">
+            <!-- Strike Beams (Rendered inside the grid coordinate space) -->
+            <div id="beam-h" class="strike-beam-h"></div>
+            <div id="beam-v" class="strike-beam-v"></div>
+
+            <!-- Grid Cells (x = 0..2, y = 0..2) -->
+            <div class="grid-cell" id="cell-0-0" data-x="0" data-y="0"></div>
+            <div class="grid-cell" id="cell-1-0" data-x="1" data-y="0"></div>
+            <div class="grid-cell" id="cell-2-0" data-x="2" data-y="0"></div>
+            <div class="grid-cell" id="cell-0-1" data-x="0" data-y="1"></div>
+            <div class="grid-cell" id="cell-1-1" data-x="1" data-y="1"></div>
+            <div class="grid-cell" id="cell-2-1" data-x="2" data-y="1"></div>
+            <div class="grid-cell" id="cell-0-2" data-x="0" data-y="2"></div>
+            <div class="grid-cell" id="cell-1-2" data-x="1" data-y="2"></div>
+            <div class="grid-cell" id="cell-2-2" data-x="2" data-y="2"></div>
+
+            <!-- Player Token with smooth CSS spring transitions -->
+            <div id="player-token">
+              <div class="player-aura" id="player-aura"></div>
+              <div class="player-disc" id="player-disc"></div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+      <!-- On-Screen Touch Controls for Mobile and Tablets -->
+      <footer id="mobile-controls" aria-label="Touch Navigation Controls">
+        <div class="dpad-row">
+          <button class="dpad-btn" id="dpad-up" aria-label="Move Up">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+          </button>
+        </div>
+        <div class="dpad-row">
+          <button class="dpad-btn" id="dpad-left" aria-label="Move Left">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <button class="dpad-btn" id="dpad-down" aria-label="Move Down">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <button class="dpad-btn" id="dpad-right" aria-label="Move Right">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+      </footer>
+
+    </div>
+
+    <!-- MODAL 1: Oracle Guess Event (Triggers when lifelines hit 2) -->
+    <div class="modal-backdrop" id="modal-oracle">
+      <div class="modal-card glass-panel">
+        <div class="brand-badge">
+          <span class="brand-dot"></span>
+          <span>ORACLE PROTOCOL</span>
+        </div>
+        <h2 class="modal-title">Predict Strike Vector</h2>
+        <p class="modal-desc">
+          Critical system alert! Predict the next RedZombies orbital strike direction to reboot emergency shields.
+        </p>
+
+        <!-- 10-Second Countdown Bar -->
+        <div class="countdown-bar-wrap">
+          <div class="countdown-bar" id="oracle-timer-bar"></div>
+        </div>
+
+        <!-- 4 Direction Prediction Options -->
+        <div class="vector-grid">
+          <button class="vector-btn" data-vector="North">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            <span>North</span>
+          </button>
+          <button class="vector-btn" data-vector="South">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <span>South</span>
+          </button>
+          <button class="vector-btn" data-vector="West">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <span>West</span>
+          </button>
+          <button class="vector-btn" data-vector="East">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            <span>East</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 2: Game Over Screen -->
+    <div class="modal-backdrop" id="modal-gameover">
+      <div class="modal-card glass-panel text-center">
+        <div class="brand-badge justify-center">
+          <span class="brand-dot"></span>
+          <span>OUTPOST OVERRUN</span>
+        </div>
+        <h2 class="modal-title lg">Game Over</h2>
+        
+        <div id="gameover-newbest" class="new-best-banner">
+          ★ NEW HIGH SCORE ★
+        </div>
+
+        <div class="score-display-box">
+          <div class="hud-stat-label">FINAL SCORE</div>
+          <div class="tabular score-value" id="gameover-score">0</div>
+        </div>
+
+        <table class="stats-table">
+          <tr>
+            <td>Waves Cleared</td>
+            <td id="gameover-rounds">0</td>
+          </tr>
+          <tr>
+            <td>Personal Best</td>
+            <td id="gameover-best">0</td>
+          </tr>
+          <tr>
+            <td>Longest Streak</td>
+            <td id="gameover-streak">0</td>
+          </tr>
+        </table>
+
+        <div class="modal-action-buttons">
+          <button class="btn-pill" id="btn-restart">Play Again</button>
+          <button class="btn-pill btn-secondary" id="btn-switch-user">Switch Profile</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 3: Profile Select & Local Leaderboard -->
+    <div class="modal-backdrop" id="modal-profile">
+      <div class="modal-card glass-panel">
+        <h2 class="modal-title">Survivor Profile</h2>
+        <p class="modal-desc">Pick an existing profile or enter a new callsign to track your stats and high scores.</p>
+        
+        <div>
+          <label class="hud-stat-label" for="profile-select-dropdown">ACTIVE PROFILE</label>
+          <select id="profile-select-dropdown" class="input-field mt-1"></select>
+        </div>
+
+        <div>
+          <label class="hud-stat-label" for="profile-new-name">OR CREATE NEW</label>
+          <div class="create-profile-row mt-1">
+            <input type="text" id="profile-new-name" class="input-field" placeholder="Enter name (e.g. Nova)" maxlength="16">
+            <button class="btn-pill btn-secondary btn-create" id="btn-profile-create">Create</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="hud-stat-label mb-2">TOP SURVIVORS LEADERBOARD</div>
+          <table class="stats-table" id="leaderboard-table">
+            <!-- Dynamically populated from JS -->
+          </table>
+        </div>
+
+        <button class="btn-pill mt-2" id="btn-profile-start">Start Game</button>
+      </div>
+    </div>
+
+    <!-- MODAL 4: How to Play / Guide -->
+    <div class="modal-backdrop" id="modal-help">
+      <div class="modal-card glass-panel">
+        <h2 class="modal-title">How to Play RedZombies</h2>
+        <div class="modal-desc help-guide">
+          <p><strong>1. Move:</strong> Use Arrow Keys, WASD, or the glass D-pad to navigate across the 3×3 grid.</p>
+          <p><strong>2. Warning Sweeps:</strong> When a row or column pulses red, a lethal strike beam is charging. The arrow outside shows where it attacks from.</p>
+          <p><strong>3. Take Cover:</strong> Stand behind grey shield barricades or step out of the danger line before the beam fires.</p>
+          <p><strong>4. Oracle Protocol:</strong> When reduced to 2 lifelines, predict the next strike direction (North/South/East/West) to restore a shield.</p>
+          <p><strong>5. Streaks:</strong> Every 5 waves survived without taking a hit earns +3 bonus points and an emerald aura.</p>
+        </div>
+        <button class="btn-pill" id="btn-help-close">Got It</button>
+      </div>
+    </div>
+
+    <!-- MODAL 5: Pause Menu -->
+    <div class="modal-backdrop" id="modal-pause">
+      <div class="modal-card glass-panel text-center">
+        <h2 class="modal-title">Game Paused</h2>
+        <p class="modal-desc">All zombie orbital sweeps are frozen. Ready to jump back in?</p>
+        <div class="modal-action-buttons mt-3">
+          <button class="btn-pill" id="btn-resume">Resume Game</button>
+          <button class="btn-pill btn-secondary" id="btn-pause-restart">Restart Run</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Main Game Engine Script -->
+  <script src="script.js"></script>
+</body>
+</html>
