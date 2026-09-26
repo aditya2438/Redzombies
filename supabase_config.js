@@ -12,7 +12,7 @@
  */
 const SUPABASE_CONFIG = {
   url: 'https://YOUR_PROJECT_ID.supabase.co',
-  anonKey: 'YOUR_SUPABASE_ANON_PUBLIC_KEY'
+  anonKey: 'sb_publishable_2Hm5Y1LGg1HizWVkN2adug_VU3L470P'
 };
 
 /**
